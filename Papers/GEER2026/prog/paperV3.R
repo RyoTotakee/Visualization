@@ -39,7 +39,7 @@ script_dir <- if (length(script_arg) > 0) {
 }
 
 base_dir <- normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = TRUE)
-data_dir <- file.path(base_dir, "data", "0316")
+data_dir <- file.path(base_dir, "data", "0329")
 define_dir <- file.path(base_dir, "define")
 output_dir <- file.path(base_dir, "output", "paperV3")
 country_set_file <- file.path(define_dir, "country.set")
@@ -50,8 +50,10 @@ scenario_landint <- "SSP2_1100C_CACN_DAC_NoCC_LandInt_global1"
 scenario_no <- "SSP2_1100C_CACN_DAC_NoCC_No"
 plot_years <- c(2050L, 2100L)
 decadal_years <- seq(2020, 2100, 10)
+analysis_years <- sort(unique(c(2015L, decadal_years)))
 focus_year <- 2100L
 top_n <- 20L
+kcal_million_to_pj <- 4.184e-6
 
 # common palettes and plotting helpers ------------------------------------
 theme_main <- theme_bw() +
@@ -70,6 +72,14 @@ save_plot <- function(filename, plot_obj, width = 12, height = 8, dpi = 300) {
   out_path <- file.path(output_dir, filename)
   ggsave(out_path, plot = plot_obj, width = width, height = height, dpi = dpi, bg = "white", limitsize = FALSE)
   message("Saved: ", out_path)
+}
+
+logmean <- function(x, y) {
+  ifelse(abs(x - y) < 1e-12, x, (x - y) / (log(x) - log(y)))
+}
+
+safe_positive <- function(x, eps = 1e-12) {
+  ifelse(is.na(x) | x <= 0, eps, x)
 }
 
 short_country_name <- function(x) {
@@ -331,6 +341,16 @@ region_map <- readLines(region_map_file, warn = FALSE) %>%
   filter(region %in% country_codes, region5_code %in% names(r5_labels), region5_code != "World") %>%
   mutate(region5 = recode(region5_code, !!!r5_labels))
 
+group_map <- readLines(file.path(define_dir, "group.map"), warn = FALSE) %>%
+  stringr::str_trim() %>%
+  .[. != "" & !startsWith(., "*")] %>%
+  stringr::str_split("\\s+") %>%
+  purrr::map_dfr(function(x) {
+    tibble(region = x[[1]], development_group = x[[length(x)]])
+  }) %>%
+  filter(region %in% country_codes) %>%
+  distinct(region, development_group)
+
 c_map <- readLines(file.path(define_dir, "c.map"), warn = FALSE) %>%
   stringr::str_trim() %>%
   .[. != "" & !startsWith(., "*")] %>%
@@ -365,7 +385,7 @@ GEER_AGMIP <- read_agmip(
   items = c("TOT", "AGR", "CRP", "LSP", "FOR", "GRS", "ECP", "ONV", "NLD", "tot", "ent", "mmg", "rcc", "sfr", "mas", "mgr", "crs", "ors", "bsv", "bcr", "WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "RUM", "NRM", "DRY"),
   units = c("kcal/cap/d", "USD/t", "1000 ha", "million", "million kcal", "1000 t", "bn USD 2017 PPP", "MtCO2e", "USD"),
   regions = regions_for_read,
-  years = decadal_years,
+  years = analysis_years,
   scenarios = c(scenario_baseline, scenario_landint)
 )
 
@@ -374,7 +394,7 @@ GEER_CTAX <- read_agmip(
   items = c("TOT"),
   units = c("USD/tCO2e"),
   regions = c("USA"),
-  years = decadal_years,
+  years = analysis_years,
   scenarios = c(scenario_baseline, scenario_landint)
 )
 
@@ -706,6 +726,7 @@ fig2_actual_r5_2100 <- bind_rows(fig2_ag_r5_2100, fig2_land_r5_2100) %>%
 
 fig2_actual_country_2100 <- bind_rows(fig2_ag_country_2100, fig2_land_country_2100) %>%
   left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
+  left_join(group_map, by = "region") %>%
   mutate(country = coalesce(country_name, region), component = factor(component, levels = fig2_component_levels))
 
 afolu_top20_2100 <- fig2_actual_country_2100 %>%
@@ -717,7 +738,7 @@ afolu_top20_2100 <- fig2_actual_country_2100 %>%
 afolu_top20_order <- afolu_top20_2100$country
 
 afolu_reduction_2100 <- fig2_actual_country_2100 %>%
-  group_by(region, country) %>%
+  group_by(region, country, development_group) %>%
   summarise(afolu_reduction = sum(value, na.rm = TRUE), .groups = "drop")
 
 afolu_rate_country_fig6 <- afolu_reduction_2100 %>%
@@ -766,7 +787,7 @@ prod_kcal_detail_change_2100 <- GEER_AGMIP %>%
   ) %>%
   select(region, item, scenario, value) %>%
   pivot_wider(names_from = scenario, values_from = value) %>%
-  mutate(change = .data[[scenario_landint]] - .data[[scenario_baseline]]) %>%
+  mutate(change = (.data[[scenario_landint]] - .data[[scenario_baseline]]) * kcal_million_to_pj) %>%
   left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
   mutate(country = factor(coalesce(country_name, region), levels = rev(afolu_top20_order)))
 
@@ -784,6 +805,108 @@ cali_change_2100 <- GEER_AGMIP %>%
   mutate(change = .data[[scenario_landint]] - .data[[scenario_baseline]]) %>%
   left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
   mutate(country = factor(coalesce(country_name, region), levels = rev(afolu_top20_order)))
+
+fig3b_cali_summary_2100 <- GEER_AGMIP %>%
+  filter(
+    region %in% afolu_top20_2100$region,
+    year %in% c(2015L, focus_year),
+    scenario %in% c(scenario_baseline, scenario_landint),
+    variable == "CALI",
+    item %in% c("AGR", "CRP", "LSP"),
+    unit == "kcal/cap/d"
+  ) %>%
+  transmute(region, year, scenario, item, value) %>%
+  pivot_wider(names_from = c(scenario, year), values_from = value) %>%
+  left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
+  mutate(
+    country = coalesce(country_name, region),
+    rank = match(country, afolu_top20_order),
+    item_label = recode(item, AGR = "Agriculture", CRP = "Crops", LSP = "Livestock"),
+    bau_2100 = .data[[paste0(scenario_baseline, "_", focus_year)]],
+    miti_2100 = .data[[paste0(scenario_landint, "_", focus_year)]],
+    bau_2015 = .data[[paste0(scenario_baseline, "_2015")]],
+    change_from_bau_2100 = miti_2100 - bau_2100,
+    change_rate_from_bau_2100_pct = if_else(is.finite(bau_2100) & bau_2100 != 0, 100 * (miti_2100 / bau_2100 - 1), NA_real_),
+    change_from_bau_2015 = miti_2100 - bau_2015,
+    change_rate_from_bau_2015_pct = if_else(is.finite(bau_2015) & bau_2015 != 0, 100 * (miti_2100 / bau_2015 - 1), NA_real_)
+  ) %>%
+  transmute(
+    rank,
+    region,
+    country,
+    item = item_label,
+    bau_2100,
+    miti_2100,
+    change_from_bau_2100,
+    change_rate_from_bau_2100_pct,
+    bau_2015,
+    change_from_bau_2015,
+    change_rate_from_bau_2015_pct
+  ) %>%
+  arrange(rank, item)
+
+fig3c_land_summary_2100 <- GEER_AGMIP %>%
+  filter(
+    region %in% afolu_top20_2100$region,
+    year %in% c(2015L, focus_year),
+    scenario %in% c(scenario_baseline, scenario_landint),
+    variable == "LAND",
+    item %in% c("TOT", "CRP", "ECP", "GRS", "ONV", "NLD", "FOR"),
+    unit == "1000 ha"
+  ) %>%
+  transmute(region, year, scenario, item, value) %>%
+  pivot_wider(names_from = item, values_from = value, values_fill = 0) %>%
+  left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
+  mutate(
+    country = coalesce(country_name, region),
+    rank = match(country, afolu_top20_order),
+    total_land = TOT,
+    `Cropland` = CRP - ECP,
+    `Energy Crop` = ECP,
+    `Grassland` = GRS,
+    `Managed and primary forest` = FOR,
+    `Other natural land` = ONV,
+    `Non arable land` = NLD
+  ) %>%
+  pivot_longer(
+    cols = c("Cropland", "Energy Crop", "Grassland", "Managed and primary forest", "Other natural land", "Non arable land"),
+    names_to = "land_item",
+    values_to = "land_area"
+  ) %>%
+  select(rank, region, country, scenario, year, total_land, land_item, land_area) %>%
+  pivot_wider(names_from = c(scenario, year), values_from = c(total_land, land_area)) %>%
+  mutate(
+    bau_2100 = .data[[paste0("land_area_", scenario_baseline, "_", focus_year)]],
+    miti_2100 = .data[[paste0("land_area_", scenario_landint, "_", focus_year)]],
+    bau_2015 = .data[[paste0("land_area_", scenario_baseline, "_2015")]],
+    total_land_2100_bau = .data[[paste0("total_land_", scenario_baseline, "_", focus_year)]],
+    total_land_2100_miti = .data[[paste0("total_land_", scenario_landint, "_", focus_year)]],
+    total_land_2015_bau = .data[[paste0("total_land_", scenario_baseline, "_2015")]],
+    change_from_bau_2100 = miti_2100 - bau_2100,
+    change_rate_from_bau_2100_pct = if_else(is.finite(total_land_2100_bau) & total_land_2100_bau != 0, 100 * change_from_bau_2100 / total_land_2100_bau, NA_real_),
+    change_from_bau_2015 = miti_2100 - bau_2015,
+    change_rate_from_bau_2015_pct = if_else(is.finite(total_land_2015_bau) & total_land_2015_bau != 0, 100 * change_from_bau_2015 / total_land_2015_bau, NA_real_),
+    bau_2100_share_pct = if_else(is.finite(total_land_2100_bau) & total_land_2100_bau != 0, 100 * bau_2100 / total_land_2100_bau, NA_real_),
+    miti_2100_share_pct = if_else(is.finite(total_land_2100_miti) & total_land_2100_miti != 0, 100 * miti_2100 / total_land_2100_miti, NA_real_),
+    bau_2015_share_pct = if_else(is.finite(total_land_2015_bau) & total_land_2015_bau != 0, 100 * bau_2015 / total_land_2015_bau, NA_real_)
+  ) %>%
+  select(
+    rank,
+    region,
+    country,
+    land_item,
+    bau_2100,
+    miti_2100,
+    change_from_bau_2100,
+    change_rate_from_bau_2100_pct,
+    bau_2015,
+    change_from_bau_2015,
+    change_rate_from_bau_2015_pct,
+    bau_2100_share_pct,
+    miti_2100_share_pct,
+    bau_2015_share_pct
+  ) %>%
+  arrange(rank, land_item)
 
 ag_cost_2100 <- GEER_AGMIP %>%
   filter(
@@ -1009,6 +1132,101 @@ world_final_wedge_r5_world_co2eq <- bind_rows(
     mutate(region_name = factor("World", levels = rev(c("World", "OECD+EU", "Asia", "Africa/Middle East", "Latin America", "Former Soviet Union"))))
 )
 
+world_qdem_levels <- world_qdem %>%
+  pivot_wider(names_from = scenario, values_from = qdem) %>%
+  transmute(
+    region,
+    year,
+    commodity,
+    qdem_bau = .data[[scenario_baseline]],
+    qdem_miti = .data[[scenario_landint]]
+  )
+
+world_qsup_levels <- world_qsup %>%
+  pivot_wider(names_from = scenario, values_from = qsup) %>%
+  transmute(
+    region,
+    year,
+    commodity,
+    qsup_bau = .data[[scenario_baseline]],
+    qsup_miti = .data[[scenario_landint]]
+  )
+
+world_ef_levels <- world_decomp_base %>%
+  select(scenario, region, year, commodity, source, gas, ef) %>%
+  pivot_wider(names_from = scenario, values_from = ef) %>%
+  transmute(
+    region,
+    year,
+    commodity,
+    source,
+    gas,
+    ef_bau = .data[[scenario_baseline]],
+    ef_miti = .data[[scenario_landint]]
+  )
+
+world_lmdi_cell_co2eq <- world_ef_levels %>%
+  left_join(world_qdem_levels, by = c("region", "year", "commodity")) %>%
+  left_join(world_qsup_levels, by = c("region", "year", "commodity")) %>%
+  mutate(
+    qdem_bau = safe_positive(qdem_bau),
+    qdem_miti = safe_positive(qdem_miti),
+    qsup_bau = safe_positive(qsup_bau),
+    qsup_miti = safe_positive(qsup_miti),
+    ef_bau = safe_positive(ef_bau),
+    ef_miti = safe_positive(ef_miti),
+    e0_kt = qsup_bau * ef_bau,
+    e1_kt = qsup_miti * ef_miti,
+    m0 = safe_positive(qsup_bau / qdem_bau),
+    m1 = safe_positive(qsup_miti / qdem_miti),
+    weight = logmean(e1_kt, e0_kt),
+    demand_mt = weight * log(qdem_miti / qdem_bau) / 1000,
+    structural_mt = weight * log(m1 / m0) / 1000,
+    technical_mt = weight * log(ef_miti / ef_bau) / 1000,
+    total_change_mt = (e1_kt - e0_kt) / 1000
+  ) %>%
+  filter(is.finite(demand_mt), is.finite(structural_mt), is.finite(technical_mt), is.finite(total_change_mt))
+
+world_lmdi_country_co2eq <- world_lmdi_cell_co2eq %>%
+  group_by(region, year) %>%
+  summarise(
+    demand_mt = sum(demand_mt, na.rm = TRUE),
+    structural_mt = sum(structural_mt, na.rm = TRUE),
+    technical_mt = sum(technical_mt, na.rm = TRUE),
+    total_change_mt = sum(total_change_mt, na.rm = TRUE),
+    check_mt = total_change_mt - (demand_mt + structural_mt + technical_mt),
+    .groups = "drop"
+  ) %>%
+  left_join(st_drop_geometry(Boundary), by = c("region" = "cty")) %>%
+  mutate(country = coalesce(country_name, region))
+
+world_lmdi_r5_world_co2eq <- bind_rows(
+  world_lmdi_country_co2eq %>%
+    left_join(region_map %>% select(region, region5), by = "region") %>%
+    filter(!is.na(region5)) %>%
+    group_by(region5, year) %>%
+    summarise(
+      demand_mt = sum(demand_mt, na.rm = TRUE),
+      structural_mt = sum(structural_mt, na.rm = TRUE),
+      technical_mt = sum(technical_mt, na.rm = TRUE),
+      total_change_mt = sum(total_change_mt, na.rm = TRUE),
+      check_mt = sum(check_mt, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(region_name = factor(recode(region5, !!!r5_labels), levels = rev(c("World", "OECD+EU", "Asia", "Africa/Middle East", "Latin America", "Former Soviet Union")))),
+  world_lmdi_country_co2eq %>%
+    group_by(year) %>%
+    summarise(
+      demand_mt = sum(demand_mt, na.rm = TRUE),
+      structural_mt = sum(structural_mt, na.rm = TRUE),
+      technical_mt = sum(technical_mt, na.rm = TRUE),
+      total_change_mt = sum(total_change_mt, na.rm = TRUE),
+      check_mt = sum(check_mt, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(region_name = factor("World", levels = rev(c("World", "OECD+EU", "Asia", "Africa/Middle East", "Latin America", "Former Soviet Union"))))
+)
+
 world_qsup_prices <- GEER_WORLD_QSUP %>%
   transmute(
     scenario = as.character(SCENARIO),
@@ -1147,6 +1365,76 @@ make_world_final_wedge_r5_total_plot <- function(plot_year) {
     geom_col(data = decomp_df, aes(x = value, y = region_name, fill = change)) +
     geom_point(data = point_df, aes(x = total_value, y = region_name), size = 2.4, shape = 21, stroke = 0.4, fill = "black", color = "black") +
     scale_fill_manual(values = c("Demand side" = "#9BC7F2", "Technical" = "#E3819C", "Structural" = "#A0EBD0")) +
+    labs(x = "Emission change from BaU (MtCO2eq/yr)", y = NULL) +
+    theme_main
+}
+
+make_world_lmdi_country_plot <- function(plot_year) {
+  top_regions <- agmip_ag_reduction_rank %>%
+    filter(year == plot_year) %>%
+    arrange(desc(ag_reduction)) %>%
+    slice_head(n = 10) %>%
+    pull(region)
+
+  bottom_regions <- agmip_ag_reduction_rank %>%
+    filter(year == plot_year, !region %in% top_regions) %>%
+    arrange(ag_reduction) %>%
+    slice_head(n = 10) %>%
+    pull(region)
+
+  selected_regions <- c(top_regions, bottom_regions)
+
+  country_order <- agmip_ag_reduction_rank %>%
+    filter(year == plot_year, region %in% selected_regions) %>%
+    mutate(group_order = if_else(region %in% top_regions, 1L, 2L)) %>%
+    arrange(group_order, desc(ag_reduction)) %>%
+    pull(country)
+
+  decomp_df <- world_lmdi_country_co2eq %>%
+    filter(year == plot_year, region %in% selected_regions) %>%
+    transmute(
+      country = factor(country, levels = rev(country_order)),
+      `Demand side` = demand_mt,
+      `Structural` = structural_mt,
+      `Technical` = technical_mt
+    ) %>%
+    pivot_longer(cols = c(`Demand side`, `Structural`, `Technical`), names_to = "change", values_to = "value") %>%
+    mutate(change = factor(change, levels = c("Demand side", "Structural", "Technical")))
+
+  point_df <- world_lmdi_country_co2eq %>%
+    filter(year == plot_year, region %in% selected_regions) %>%
+    transmute(country = factor(country, levels = rev(country_order)), total_value = total_change_mt)
+
+  ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+    geom_col(data = decomp_df, aes(x = value, y = country, fill = change)) +
+    geom_point(data = point_df, aes(x = total_value, y = country), size = 2.4, shape = 21, stroke = 0.4, fill = "black", color = "black") +
+    scale_fill_manual(values = c("Demand side" = "#9BC7F2", "Structural" = "#A0EBD0", "Technical" = "#E3819C")) +
+    labs(x = "Emission change from BaU (MtCO2eq/yr)", y = NULL) +
+    theme_main
+}
+
+make_world_lmdi_r5_plot <- function(plot_year) {
+  decomp_df <- world_lmdi_r5_world_co2eq %>%
+    filter(year == plot_year) %>%
+    transmute(
+      region_name,
+      `Demand side` = demand_mt,
+      `Structural` = structural_mt,
+      `Technical` = technical_mt
+    ) %>%
+    pivot_longer(cols = c(`Demand side`, `Structural`, `Technical`), names_to = "change", values_to = "value") %>%
+    mutate(change = factor(change, levels = c("Demand side", "Structural", "Technical")))
+
+  point_df <- world_lmdi_r5_world_co2eq %>%
+    filter(year == plot_year) %>%
+    transmute(region_name, total_value = total_change_mt)
+
+  ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+    geom_col(data = decomp_df, aes(x = value, y = region_name, fill = change)) +
+    geom_point(data = point_df, aes(x = total_value, y = region_name), size = 2.4, shape = 21, stroke = 0.4, fill = "black", color = "black") +
+    scale_fill_manual(values = c("Demand side" = "#9BC7F2", "Structural" = "#A0EBD0", "Technical" = "#E3819C")) +
     labs(x = "Emission change from BaU (MtCO2eq/yr)", y = NULL) +
     theme_main
 }
@@ -1374,18 +1662,19 @@ write_csv(
 
 write_csv(
   fig2_actual_country_2100 %>%
-    group_by(country, component) %>%
+    group_by(region, country, development_group, component) %>%
     summarise(value = sum(value, na.rm = TRUE), .groups = "drop") %>%
     left_join(
       afolu_top20_2100 %>%
         transmute(
+          region,
           country,
           total_value,
           share_pct = 100 * total_value / sum(fig2_actual_country_2100$value, na.rm = TRUE),
           cumulative_share_pct = cumsum(100 * total_value / sum(fig2_actual_country_2100$value, na.rm = TRUE)),
           rank = row_number()
         ),
-      by = "country"
+      by = c("region", "country")
     ) %>%
     arrange(rank, component),
   file.path(output_dir, "fig2_top_countries_summary_2100.csv")
@@ -1404,6 +1693,34 @@ write_csv(
     filter(rank %in% c(5, 10, 15, 20)) %>%
     transmute(top_n = rank, cumulative_share_pct = cumulative_share_pct),
   file.path(output_dir, "fig2_cumulative_share_summary.csv")
+)
+
+write_csv(
+  afolu_reduction_2100 %>%
+    mutate(development_group = replace_na(development_group, "Unknown")) %>%
+    group_by(development_group) %>%
+    summarise(reduction_mt = sum(afolu_reduction, na.rm = TRUE), .groups = "drop") %>%
+    mutate(
+      world_reduction_mt = sum(reduction_mt, na.rm = TRUE),
+      share_pct_of_world = 100 * reduction_mt / world_reduction_mt
+    ) %>%
+    arrange(desc(reduction_mt)),
+  file.path(output_dir, "fig2_development_group_summary_2100.csv")
+)
+
+write_csv(
+  afolu_reduction_2100 %>%
+    mutate(development_group = replace_na(development_group, "Unknown")) %>%
+    filter(development_group == "Developing") %>%
+    summarise(
+      development_group = "Developing",
+      reduction_mt = sum(afolu_reduction, na.rm = TRUE)
+    ) %>%
+    mutate(
+      world_reduction_mt = sum(afolu_reduction_2100$afolu_reduction, na.rm = TRUE),
+      share_pct_of_world = 100 * reduction_mt / world_reduction_mt
+    ),
+  file.path(output_dir, "fig2_developing_share_summary_2100.csv")
 )
 
 # ---- Fig 3: Top AFOLU reducers and associated changes with cost
@@ -1433,7 +1750,7 @@ p_prod <- ggplot(
     drop = FALSE,
     guide = guide_legend(nrow = 3, byrow = TRUE)
   ) +
-  labs(x = "Production (million kcal)", y = NULL) +
+  labs(x = "Production (PJ)", y = NULL) +
   theme_main
 
 p_cali <- make_horizontal_stack_with_point(
@@ -1486,6 +1803,16 @@ fig3 <- wrap_plots(p_prod, p_cali, p_land_share, p_cost, ncol = 4, widths = c(1.
   theme(legend.position = "bottom", legend.text = element_text(size = 8.5))
 
 save_plot("fig3_top_reduction_country_changes_with_cost_2100.png", fig3, width = 13, height = 5)
+
+write_csv(
+  fig3b_cali_summary_2100,
+  file.path(output_dir, "fig3b_calorie_change_summary_2100.csv")
+)
+
+write_csv(
+  fig3c_land_summary_2100,
+  file.path(output_dir, "fig3c_land_change_summary_2100.csv")
+)
 
 # ---- Fig 4: Producer price changes for crops and livestock
 fig4 <- ggplot(xprc_change_2100, aes(x = value, y = country)) +
@@ -1562,6 +1889,68 @@ write_csv(
     ) %>%
     transmute(region, country, year, ag_reduction, demand_mt, technical_mt, structural_mt, total_change_mt),
   file.path(output_dir, "fig6_top_bottom_country_decomposition_summary_2100.csv")
+)
+
+# ---- Fig 6a: Agricultural decomposition in 2100 (Kaya + LMDI)
+fig6a <- wrap_plots(
+  make_world_lmdi_r5_plot(focus_year),
+  make_world_lmdi_country_plot(focus_year),
+  ncol = 2,
+  widths = c(0.8, 1)
+) + plot_annotation(tag_levels = "a")
+
+save_plot("fig6a_agricultural_decomposition_lmdi_2100.png", fig6a, width = 11, height = 5.5)
+
+write_csv(
+  world_lmdi_r5_world_co2eq %>%
+    filter(year == focus_year) %>%
+    mutate(
+      demand_share_pct = if_else(abs(total_change_mt) > 0, 100 * demand_mt / total_change_mt, NA_real_),
+      structural_share_pct = if_else(abs(total_change_mt) > 0, 100 * structural_mt / total_change_mt, NA_real_),
+      technical_share_pct = if_else(abs(total_change_mt) > 0, 100 * technical_mt / total_change_mt, NA_real_)
+    ) %>%
+    transmute(
+      region = as.character(region_name),
+      year,
+      demand_mt,
+      structural_mt,
+      technical_mt,
+      total_change_mt,
+      check_mt,
+      demand_share_pct,
+      structural_share_pct,
+      technical_share_pct
+    ),
+  file.path(output_dir, "fig6a_world_r5_decomposition_lmdi_summary_2100.csv")
+)
+
+write_csv(
+  world_lmdi_country_co2eq %>%
+    filter(year == focus_year, region %in% c(fig6_top_regions_2100, fig6_bottom_regions_2100)) %>%
+    left_join(
+      agmip_ag_reduction_rank %>% filter(year == focus_year) %>% select(region, ag_reduction),
+      by = "region"
+    ) %>%
+    mutate(
+      demand_share_pct = if_else(abs(total_change_mt) > 0, 100 * demand_mt / total_change_mt, NA_real_),
+      structural_share_pct = if_else(abs(total_change_mt) > 0, 100 * structural_mt / total_change_mt, NA_real_),
+      technical_share_pct = if_else(abs(total_change_mt) > 0, 100 * technical_mt / total_change_mt, NA_real_)
+    ) %>%
+    transmute(
+      region,
+      country,
+      year,
+      ag_reduction,
+      demand_mt,
+      structural_mt,
+      technical_mt,
+      total_change_mt,
+      check_mt,
+      demand_share_pct,
+      structural_share_pct,
+      technical_share_pct
+    ),
+  file.path(output_dir, "fig6a_top_bottom_country_decomposition_lmdi_summary_2100.csv")
 )
 
 # ---- Fig 7: AFOLU reduction-rate bubble plots
