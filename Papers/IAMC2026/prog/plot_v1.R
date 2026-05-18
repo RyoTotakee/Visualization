@@ -394,7 +394,7 @@ regions_for_read <- unique(c("World", sort(unique(country_codes)), names(r5_labe
 
 GEER_AGMIP <- read_agmip(
   variables = c("CALI", "XPRC", "PROD", "CONS", "LAND", "POPT", "GDPT", "EMIS", "RedCos"),
-  items = c("TOT", "AGR", "CRP", "LSP", "FOR", "GRS", "ECP", "ONV", "NLD", "tot", "ent", "mmg", "rcc", "sfr", "mas", "mgr", "crs", "ors", "bsv", "bcr", "WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "RUM", "NRM", "DRY"),
+  items = c("TOT", "AGR", "CRP", "LSP", "FOR", "GRS", "ECP", "ONV", "NLD", "tot", "ent", "mmg", "rcc", "sfr", "mas", "mgr", "crs", "ors", "bsv", "bcr", "WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "DRY", "RUM", "NRM"),
   units = c("kcal/cap/d", "USD/t", "1000 ha", "million", "million kcal", "1000 t", "bn USD 2017 PPP", "MtCO2e", "USD"),
   regions = regions_for_read,
   years = analysis_years,
@@ -762,7 +762,7 @@ afolu_rate_country_fig6 <- afolu_reduction_2100 %>%
   ) %>%
   mutate(reduction_rate = if_else(is.finite(baseline_emissions) & baseline_emissions != 0, 100 * afolu_reduction / baseline_emissions, NA_real_))
 
-prod_detail_items <- c("WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "RUM", "NRM", "DRY")
+prod_detail_items <- c("WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "DRY", "RUM", "NRM")
 prod_detail_labels <- c(
   WHT = "Wheat",
   RIC = "Rice",
@@ -771,9 +771,9 @@ prod_detail_labels <- c(
   SGC = "Sugar crops",
   VFN = "Vegetables & fruits",
   OCR = "Other crops",
+  DRY = "Dairy",
   RUM = "Ruminant",
-  NRM = "Non-ruminant",
-  DRY = "Dairy"
+  NRM = "Non-ruminant"
 )
 prod_detail_palette <- c(
   "Wheat" = "#4C78A8",
@@ -783,9 +783,9 @@ prod_detail_palette <- c(
   "Sugar crops" = "#6C8EBF",
   "Vegetables & fruits" = "#2A9D8F",
   "Other crops" = "#9E9E9E",
+  "Dairy" = "#E9C46A",
   "Ruminant" = "#B2182B",
-  "Non-ruminant" = "#F4A261",
-  "Dairy" = "#E9C46A"
+  "Non-ruminant" = "#F4A261"
 )
 
 prod_kcal_detail_change_2100 <- GEER_AGMIP %>%
@@ -1541,20 +1541,37 @@ fig1_top_df <- fig1_baseline_country_2100 %>%
   filter(region %in% fig1_top_regions$region) %>%
   mutate(country = factor(country, levels = fig1_top_regions$country))
 
+tag_main_panel <- function(plot_obj, tag_label) {
+  plot_obj +
+    labs(tag = tag_label) +
+    theme(
+      plot.tag = element_text(size = 14, face = "bold"),
+      plot.tag.position = c(0, 1)
+    )
+}
+
 fig1 <- wrap_plots(
-  make_world_ts_panel(fig1_baseline_world_ts, fig1_component_palette, fig1_component_levels),
-  make_top_country_share_panel(
-    fig1_top_df %>% group_by(region, country, component) %>% summarise(value = sum(value, na.rm = TRUE), .groups = "drop"),
-    full_total_sum = fig1_baseline_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
-    palette = fig1_component_palette,
-    limits = fig1_component_levels
+  tag_main_panel(
+    make_world_ts_panel(fig1_baseline_world_ts, fig1_component_palette, fig1_component_levels),
+    "a)"
   ),
-  make_r5_panel(fig1_baseline_world_r5_2100, fig1_component_palette, fig1_component_levels),
+  tag_main_panel(
+    make_top_country_share_panel(
+      fig1_top_df %>% group_by(region, country, component) %>% summarise(value = sum(value, na.rm = TRUE), .groups = "drop"),
+      full_total_sum = fig1_baseline_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
+      palette = fig1_component_palette,
+      limits = fig1_component_levels
+    ),
+    "c)"
+  ),
+  tag_main_panel(
+    make_r5_panel(fig1_baseline_world_r5_2100, fig1_component_palette, fig1_component_levels),
+    "b)"
+  ),
   design = "AB\nCB",
   widths = c(1.0, 1.8),
   heights = c(1, 1)
-) + plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = list(c("a", "c", "b"))) &
+) + plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
 save_plot("fig1_bau_afolu_emissions.png", fig1, width = 11, height = 6)
@@ -1620,21 +1637,27 @@ fig2_top_df <- fig2_actual_country_2100 %>%
   mutate(country = factor(country, levels = afolu_top20_order))
 
 fig2 <- wrap_plots(
-  make_world_ts_panel(fig2_actual_world_ts, fig2_component_palette, fig2_component_levels),
-  make_top_country_share_panel(
-    fig2_top_df,
-    full_total_sum = fig2_actual_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
-    palette = fig2_component_palette,
-    limits = fig2_component_levels
+  tag_main_panel(
+    make_world_ts_panel(fig2_actual_world_ts, fig2_component_palette, fig2_component_levels),
+    "d)"
   ),
-  make_r5_panel(fig2_actual_r5_2100, fig2_component_palette, fig2_component_levels),
+  tag_main_panel(
+    make_top_country_share_panel(
+      fig2_top_df,
+      full_total_sum = fig2_actual_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
+      palette = fig2_component_palette,
+      limits = fig2_component_levels
+    ),
+    "f)"
+  ),
+  tag_main_panel(
+    make_r5_panel(fig2_actual_r5_2100, fig2_component_palette, fig2_component_levels),
+    "e)"
+  ),
   design = "AB\nCB",
   widths = c(1.0, 1.8),
   heights = c(1, 1)
-) + plot_layout(guides = "collect")
-
-fig2 <- (fig2 +
-  plot_annotation(tag_levels = list(c("a", "c", "b")))) &
+) + plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
 save_plot("fig2_afolu_actual_reduction.png", fig2, width = 11, height = 6)
@@ -1762,7 +1785,7 @@ p_prod <- ggplot(
     values = prod_detail_palette,
     limits = unname(prod_detail_labels),
     drop = FALSE,
-    guide = guide_legend(nrow = 3, byrow = TRUE)
+    guide = guide_legend(nrow = 4, byrow = TRUE)
   ) +
   labs(x = "Production (PJ)", y = NULL) +
   theme_main
@@ -1786,7 +1809,7 @@ p_land_share <- ggplot(
   geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
   geom_col() +
   scale_fill_manual(values = land_color, guide = guide_legend(nrow = 3, byrow = TRUE)) +
-  labs(x = "Land-use change (% of total land area)", y = NULL) +
+  labs(x = "Land-use change\n(% of total land area)", y = NULL) +
   theme_main
 
 cost_palette <- c(
@@ -2009,49 +2032,96 @@ fig1_panel <- wrap_plots(
   fig2,
   ncol = 1,
   heights = c(1, 0.05, 1)
-) + plot_annotation(tag_levels = "a", tag_suffix = ")")
-
-fig1_panel <- fig1_panel & theme(
-  plot.tag = element_text(size = 14, face = "bold"),
-  plot.tag.position = c(0, 1)
 )
 
-save_plot("fig1_panel.png", fig1_panel, width = 11, height = 12)
+save_plot("fig1_panel.png", fig1_panel, width = 12, height = 11)
+
+tag_panel_plot <- function(plot_obj, tag_label) {
+  plot_obj + labs(tag = tag_label) + theme(
+    plot.tag = element_text(size = 12.5, face = "bold"),
+    plot.tag.position = c(0, 1)
+  )
+}
+
+enhance_scatter_text <- function(plot_obj) {
+  plot_obj & theme(
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.title = element_blank(),
+  )
+}
+
+p_xprc_crp <- ggplot(
+  xprc_change_2100 %>% filter(item == "Crops"),
+  aes(x = value, y = country)
+) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+  geom_col(fill = "#4C78A8") +
+  labs(
+    x = "Consumer crop price change\nunder MITI relative to BaU (%)",
+    y = NULL
+  ) +
+  theme_main
+
+p_xprc_lsp <- ggplot(
+  xprc_change_2100 %>% filter(item == "Livestock"),
+  aes(x = value, y = country)
+) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+  geom_col(fill = "#4C78A8") +
+  labs(
+    x = "Consumer livestock price change\nunder MITI relative to BaU (%)",
+    y = NULL
+  ) +
+  theme_main
+
+p_fig5_crp <- enhance_scatter_text(make_residual_share_vs_cali_scatter("CRP")) +
+  labs(
+    x = "Share of residual-emission pricing in domestic crop price (%)",
+    y = "Change in crop calorie intake from BaU\n(kcal/cap/d)"
+  )
+p_fig5_lsp <- enhance_scatter_text(make_residual_share_vs_cali_scatter("LSP")) +
+  labs(
+    x = "Share of residual-emission pricing in domestic livestock price (%)",
+    y = "Change in livestock calorie intake from BaU\n(kcal/cap/d)"
+  )
+
+fig2_top <- wrap_plots(
+  tag_panel_plot(p_prod, "a)"),
+  tag_panel_plot(p_cali, "b)"),
+  tag_panel_plot(p_land_share, "c)"),
+  tag_panel_plot(p_xprc_crp, "d)"),
+  tag_panel_plot(p_xprc_lsp, "e)"),
+  plot_spacer(),
+  ncol = 6,
+  widths = c(1.55, 1.05, 1.25, 1.1, 1.2, 0.04)
+)
 
 fig2_bottom <- wrap_plots(
-  fig4,
+  tag_panel_plot(p_fig5_crp, "f)"),
   plot_spacer(),
-  fig5,
-  ncol = 3,
-  widths = c(0.9, 0.04, 1.1)
+  tag_panel_plot(p_fig5_lsp, "g)"),
+  plot_spacer(),
+  ncol = 4,
+  widths = c(1, 0.04, 1, 0.04)
 )
 
 fig2_panel <- wrap_plots(
-  fig3,
+  fig2_top,
   plot_spacer(),
   fig2_bottom,
   ncol = 1,
-  heights = c(1, 0.05, 1.2)
-) + plot_annotation(tag_levels = "a", tag_suffix = ")")
+  heights = c(1.1, 0.02, 0.88)
+)
 
 fig2_panel <- fig2_panel & theme(
   plot.tag = element_text(size = 14, face = "bold"),
   plot.tag.position = c(0, 1)
 )
 
-save_plot("fig2_panel.png", fig2_panel, width = 14, height = 15)
+save_plot("fig2_panel.png", fig2_panel, width = 15, height = 13)
 
-fig3_panel <- wrap_plots(
-  fig6a,
-  plot_spacer(),
-  fig7,
-  ncol = 1,
-  heights = c(0.8, 0.05, 1.4)
-) + plot_annotation(tag_levels = "a", tag_suffix = ")")
+fig3_panel <- fig6a
 
-fig3_panel <- fig3_panel & theme(
-  plot.tag = element_text(size = 14, face = "bold"),
-  plot.tag.position = c(0, 1)
-)
-
-save_plot("fig3_panel.png", fig3_panel, width = 14, height = 17)
+save_plot("fig3_panel.png", fig3_panel, width = 11, height = 5.5)
