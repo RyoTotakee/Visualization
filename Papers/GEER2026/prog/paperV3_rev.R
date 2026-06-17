@@ -182,16 +182,16 @@ fixed_afolu_bubble_size <- function(df) {
     )
 }
 
-make_world_ts_panel <- function(df, palette, limits, y_label = "MtCO2eq/yr") {
+make_world_ts_panel <- function(df, palette, limits, y_label = "MtCO2eq/yr", x_label = "Year") {
   ggplot(df, aes(x = factor(year), y = value, fill = component)) +
     geom_col(width = 0.72) +
     scale_fill_manual(values = palette, limits = limits, drop = FALSE) +
-    labs(x = "Year", y = y_label) +
+    labs(x = x_label, y = y_label) +
     theme_main +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }
 
-make_world_ts_panel_with_observed <- function(df, palette, limits, y_label = "MtCO2eq/yr") {
+make_world_ts_panel_with_observed <- function(df, palette, limits, y_label = "MtCO2eq/yr", x_label = "Year") {
   x_axis <- df %>%
     distinct(x_pos, x_label) %>%
     arrange(x_pos)
@@ -204,7 +204,7 @@ make_world_ts_panel_with_observed <- function(df, palette, limits, y_label = "Mt
       expand = expansion(mult = c(0.03, 0.03))
     ) +
     scale_fill_manual(values = palette, limits = limits, drop = FALSE) +
-    labs(x = "Year", y = y_label) +
+    labs(x = x_label, y = y_label) +
     theme_main +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
@@ -212,14 +212,20 @@ make_world_ts_panel_with_observed <- function(df, palette, limits, y_label = "Mt
     )
 }
 
-make_r5_panel <- function(df, palette, limits, y_label = "MtCO2eq/yr") {
-  ggplot(df, aes(x = region_name, y = value, fill = component)) +
+make_r5_panel <- function(df, palette, limits, y_label = "MtCO2eq/yr", x_expand_add = NULL) {
+  p <- ggplot(df, aes(x = region_name, y = value, fill = component)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
     geom_col(width = 0.72) +
     scale_fill_manual(values = palette, limits = limits, drop = FALSE) +
     labs(x = NULL, y = y_label) +
     theme_main +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  if (!is.null(x_expand_add)) {
+    p <- p + scale_x_discrete(expand = expansion(add = x_expand_add))
+  }
+
+  p
 }
 
 make_top_country_share_panel <- function(df, full_total_sum, palette, limits, x_label = "MtCO2eq/yr") {
@@ -272,7 +278,7 @@ make_horizontal_stack_with_point <- function(stack_df, point_df, x_label) {
       fill = "black",
       color = "black"
     ) +
-    scale_fill_manual(values = crp_lsp_palette) +
+    scale_fill_manual(values = crp_lsp_palette, guide = guide_legend(ncol = 1)) +
     labs(x = x_label, y = NULL) +
     theme_main
 }
@@ -336,14 +342,14 @@ make_generic_bubble_plot <- function(metric_col, x_label, y_df, y_col, y_label, 
       show.legend = FALSE
     ) +
     scale_fill_manual(values = region_palette) +
-    scale_color_manual(values = region_border_palette) +
+    scale_color_manual(values = region_border_palette, guide = guide_legend(ncol = 3, byrow = TRUE)) +
     scale_size_manual(values = c(3, 4.8, 6.4, 8), drop = FALSE) +
     scale_alpha_manual(values = setNames(c(0.58, 0.66, 0.74, 0.82), size_levels), guide = "none", drop = FALSE) +
     labs(x = x_label, y = y_label) +
     guides(
-      fill = guide_legend(order = 1, nrow = 1, byrow = TRUE, override.aes = list(size = 4, alpha = 1)),
+      fill = guide_legend(order = 1, ncol = 3, byrow = TRUE, override.aes = list(size = 4, alpha = 1)),
       color = "none",
-      size = guide_legend(order = 2, nrow = 1, byrow = TRUE)
+      size = guide_legend(order = 2, ncol = 2, byrow = TRUE)
     ) +
     theme_main +
     theme(legend.position = "bottom", legend.box = "vertical")
@@ -1558,7 +1564,7 @@ make_residual_share_vs_cali_scatter <- function(item_code) {
     scale_color_manual(values = region_border_palette) +
     labs(
       x = "Share of residual-emission pricing in domestic food price (%)",
-      y = "Change in calorie intake from BaU (kcal/cap/d)"
+      y = "Change in calorie intake from BaU\n(kcal/cap/d)"
     ) +
     theme_main
 }
@@ -1577,22 +1583,34 @@ p_fig0_ctax <- ggplot(fig0_ctax_df, aes(x = year, y = value)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
   scale_x_continuous(breaks = decadal_years) +
-  labs(x = NULL, y = "Carbon price (USD/tCO2)") +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank())
+  labs(x = "Year", y = "Carbon price (USD/tCO2)") +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(6, 8, 6, 8)
+  )
 
 p_fig0_ecp <- ggplot(fig0_ecp_df, aes(x = year, y = value)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
   scale_x_continuous(breaks = decadal_years) +
-  labs(x = "Year", y = "Energy crop demand (million t)") +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank())
+  labs(x = "Year", y = "Energy crop demand\n(million t)") +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(6, 8, 6, 8)
+  )
 
-fig0 <- wrap_plots(p_fig0_ctax, p_fig0_ecp, ncol = 1) +
+fig0 <- wrap_plots(p_fig0_ctax, p_fig0_ecp, ncol = 2) +
   plot_annotation(tag_levels = list(c("a", "b")))
 
-save_plot("fig0_carbon_price_and_energy_crop.png", fig0, width = 4, height = 5)
+save_plot("fig0_carbon_price_and_energy_crop.png", fig0, width = 6, height = 3)
 
 # ---- Fig 1: BaU AFOLU emissions
 fig1_top_regions <- fig1_baseline_country_2100 %>%
@@ -1606,22 +1624,39 @@ fig1_top_df <- fig1_baseline_country_2100 %>%
   mutate(country = factor(country, levels = fig1_top_regions$country))
 
 fig1 <- wrap_plots(
-  make_world_ts_panel_with_observed(fig1_world_ts_with_observed, fig1_component_palette, fig1_component_levels),
+  make_world_ts_panel_with_observed(fig1_world_ts_with_observed, fig1_component_palette, fig1_component_levels, x_label = NULL) +
+    guides(fill = "none") +
+    theme(plot.margin = margin(5.5, 5.5, 0, 5.5)),
+  free(
+    make_r5_panel(fig1_baseline_world_r5_2100, fig1_component_palette, fig1_component_levels) +
+      guides(fill = "none") +
+      theme(plot.margin = margin(5.5, 5.5, 0, 5.5)),
+    type = "space",
+    side = "r"
+  ),
   make_top_country_share_panel(
     fig1_top_df %>% group_by(region, country, component) %>% summarise(value = sum(value, na.rm = TRUE), .groups = "drop"),
     full_total_sum = fig1_baseline_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
     palette = fig1_component_palette,
     limits = fig1_component_levels
-  ),
-  make_r5_panel(fig1_baseline_world_r5_2100, fig1_component_palette, fig1_component_levels),
-  design = "AB\nCB",
-  widths = c(1.0, 1.8),
-  heights = c(1, 1)
-) + plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = list(c("a", "c", "b"))) &
-  theme(legend.position = "bottom")
+  ) +
+    guides(
+      fill = guide_legend(nrow = 2, byrow = TRUE),
+      color = guide_legend(nrow = 1, byrow = TRUE)
+    ) +
+    theme(plot.margin = margin(0, 5.5, 5.5, 5.5)),
+  design = "AB\nCC",
+  widths = c(1.1, 1.0),
+  heights = c(0.75, 1.25)
+) +
+  plot_annotation(tag_levels = list(c("a", "b", "c"))) &
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.margin = margin(0, 0, 0, 0)
+  )
 
-save_plot("fig1_bau_afolu_emissions.png", fig1, width = 11, height = 6)
+save_plot("fig1_bau_afolu_emissions.png", fig1, width = 5.5, height = 6.2)
 
 write_csv(
   fig1_world_ts_with_observed %>%
@@ -1693,22 +1728,42 @@ fig2_top_df <- fig2_actual_country_2100 %>%
   mutate(country = factor(country, levels = afolu_top20_order))
 
 fig2 <- wrap_plots(
-  make_world_ts_panel(fig2_actual_world_ts, fig2_component_palette, fig2_component_levels),
+  make_world_ts_panel(fig2_actual_world_ts, fig2_component_palette, fig2_component_levels, x_label = NULL) +
+    guides(fill = "none") +
+    theme(plot.margin = margin(5.5, 5.5, 0, 5.5)),
+  free(
+    make_r5_panel(fig2_actual_r5_2100, fig2_component_palette, fig2_component_levels) +
+      guides(fill = "none") +
+      theme(plot.margin = margin(5.5, 5.5, 0, 5.5)),
+    type = "space",
+    side = "r"
+  ),
   make_top_country_share_panel(
     fig2_top_df,
     full_total_sum = fig2_actual_country_2100 %>% group_by(region) %>% summarise(total_value = sum(value, na.rm = TRUE), .groups = "drop") %>% summarise(total_sum = sum(total_value, na.rm = TRUE), .groups = "drop") %>% pull(total_sum),
     palette = fig2_component_palette,
     limits = fig2_component_levels
-  ),
-  make_r5_panel(fig2_actual_r5_2100, fig2_component_palette, fig2_component_levels),
-  design = "AB\nCB",
-  widths = c(1.0, 1.8),
-  heights = c(1, 1)
-) + plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = list(c("a", "c", "b"))) &
-  theme(legend.position = "bottom")
+  ) +
+    guides(
+      fill = guide_legend(ncol = 3, byrow = TRUE, order = 1),
+      color = guide_legend(nrow = 1, byrow = TRUE, order = 2)
+    ) +
+    theme(plot.margin = margin(0, 5.5, 5.5, 5.5)),
+  design = "AB\nCC",
+  widths = c(1.1, 0.9),
+  heights = c(0.75, 1.25)
+) +
+  plot_annotation(tag_levels = list(c("a", "b", "c"))) &
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.text = element_text(size = 8),
+    legend.key.size = grid::unit(0.35, "cm"),
+    legend.spacing.y = grid::unit(0.05, "cm")
+  )
 
-save_plot("fig2_afolu_actual_reduction.png", fig2, width = 11, height = 6)
+save_plot("fig2_afolu_actual_reduction.png", fig2, width = 5.5, height = 6.5)
 
 write_csv(
   fig2_actual_world_ts %>%
@@ -1844,7 +1899,7 @@ p_cali <- make_horizontal_stack_with_point(
     mutate(component = recode(item, CRP = "Crops", LSP = "Livestock")) %>%
     transmute(country, component, value = change),
   cali_change_2100 %>% filter(item == "AGR") %>% transmute(country, total_value = change),
-  "Calorie intake (kcal/cap/d)"
+  "Calorie intake\n(kcal/cap/d)"
 )
 
 p_land_share <- ggplot(
@@ -1857,7 +1912,7 @@ p_land_share <- ggplot(
   geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
   geom_col() +
   scale_fill_manual(values = land_color, guide = guide_legend(nrow = 3, byrow = TRUE)) +
-  labs(x = "Land-use change (% of total land area)", y = NULL) +
+  labs(x = "Land-use change\n(% of total land area)", y = NULL) +
   theme_main
 
 cost_palette <- c(
@@ -1878,8 +1933,8 @@ p_cost <- ggplot(cost_2100, aes(x = value, y = country, fill = component)) +
     fill = "black",
     color = "black"
   ) +
-  scale_fill_manual(values = cost_palette) +
-  labs(x = "Mitigation cost (billion USD/yr)", y = NULL) +
+  scale_fill_manual(values = cost_palette, guide = guide_legend(ncol = 1)) +
+  labs(x = "Mitigation cost\n(billion USD/yr)", y = NULL) +
   theme_main
 
 fig3 <- wrap_plots(p_prod, p_cali, p_land_share, p_cost, ncol = 4, widths = c(1.55, 1.05, 1.25, 1.1)) +
@@ -1887,7 +1942,7 @@ fig3 <- wrap_plots(p_prod, p_cali, p_land_share, p_cost, ncol = 4, widths = c(1.
   plot_annotation(tag_levels = "a") &
   theme(legend.position = "bottom", legend.text = element_text(size = 8.5))
 
-save_plot("fig3_top_reduction_country_changes_with_cost_2100.png", fig3, width = 13, height = 5)
+save_plot("fig3_top_reduction_country_changes_with_cost_2100.png", fig3, width = 11, height = 4.5)
 
 write_csv(
   fig3b_cali_summary_2100,
@@ -1911,15 +1966,19 @@ save_plot("fig4_xprc_change_2100.png", fig4, width = 5, height = 4)
 
 # ---- Fig 5: Residual-emission share vs calorie change
 fig5 <- wrap_plots(
-  make_residual_share_vs_cali_scatter("CRP"),
-  make_residual_share_vs_cali_scatter("LSP"),
+  make_residual_share_vs_cali_scatter("CRP") +
+    guides(color = "none"),
+  make_residual_share_vs_cali_scatter("LSP") +
+    guides(color = guide_legend(ncol = 3, byrow = TRUE)),
   ncol = 1
 ) +
-  plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "a") &
-  theme(legend.position = "bottom")
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical"
+  )
 
-save_plot("fig5_residual_share_vs_cali_scatter_2100.png", fig5, width = 7, height = 10.5)
+save_plot("fig5_residual_share_vs_cali_scatter_2100.png", fig5, width = 6, height = 9)
 
 # ---- Fig 6: Agricultural decomposition in 2100
 fig6 <- wrap_plots(
@@ -1980,11 +2039,13 @@ write_csv(
 fig6a <- wrap_plots(
   make_world_lmdi_r5_plot(focus_year),
   make_world_lmdi_country_plot(focus_year),
-  ncol = 2,
-  widths = c(0.8, 1)
-) + plot_annotation(tag_levels = "a")
+  ncol = 1,
+  heights = c(0.5, 1)
+) + plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "a") &
+  theme(legend.position = "bottom")
 
-save_plot("fig6a_agricultural_decomposition_lmdi_2100.png", fig6a, width = 11, height = 5.5)
+save_plot("fig6a_agricultural_decomposition_lmdi_2100.png", fig6a, width = 5, height = 6)
 
 write_csv(
   world_lmdi_r5_world_co2eq %>%
@@ -2045,7 +2106,7 @@ make_afolu_rate_bubble_plot <- function(metric_col, x_label) {
     x_label = x_label,
     y_df = afolu_rate_country_fig6 %>% transmute(region, afolu_reduction = afolu_reduction, reduction_rate),
     y_col = "reduction_rate",
-    y_label = "AFOLU reduction rate (% of BaU emissions)",
+    y_label = "AFOLU reduction rate\n(% of BaU emissions)",
     geer_agmip = GEER_AGMIP,
     focus_year = focus_year,
     scenario_baseline = scenario_baseline,
@@ -2061,9 +2122,14 @@ fig7 <- wrap_plots(
   make_afolu_rate_bubble_plot("gdppc", "GDP per capita in BaU (1000 USD 2017 PPP)"),
   make_afolu_rate_bubble_plot("self_suff_bau", "Agricultural self-sufficiency in BaU (%)"),
   make_afolu_rate_bubble_plot("cali_agr", "Change in calorie intake under MITI relative to BaU (kcal/cap/d)"),
-  ncol = 2
+  ncol = 1
 ) + plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "a") &
-  theme(legend.position = "bottom", legend.box = "vertical")
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.text = element_text(size = 10),
+    axis.title = element_text(size = 13)
+  )
 
-save_plot("fig7_afolu_rate_bubbles_2100.png", fig7, width = 14, height = 12)
+save_plot("fig7_afolu_rate_bubbles_2100.png", fig7, width = 7, height = 16)
