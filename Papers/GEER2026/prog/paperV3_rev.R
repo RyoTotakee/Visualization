@@ -408,7 +408,7 @@ read_agmip <- function(variables, items, units, regions, years, scenarios) {
 regions_for_read <- unique(c("World", sort(unique(country_codes)), names(r5_labels)))
 
 GEER_AGMIP <- read_agmip(
-  variables = c("CALI", "XPRC", "PROD", "CONS", "LAND", "POPT", "GDPT", "EMIS", "RedCos"),
+  variables = c("CALI", "XPRC", "PROD", "CONS", "EXPO", "LAND", "POPT", "GDPT", "EMIS", "RedCos"),
   items = c("TOT", "AGR", "CRP", "LSP", "FOR", "GRS", "ECP", "ONV", "NLD", "tot", "ent", "mmg", "rcc", "sfr", "mas", "mgr", "crs", "ors", "bsv", "bcr", "WHT", "RIC", "CGR", "OSD", "SGC", "VFN", "OCR", "RUM", "NRM", "DRY"),
   units = c("kcal/cap/d", "USD/t", "1000 ha", "million", "million kcal", "1000 t", "bn USD 2017 PPP", "MtCO2e", "USD"),
   regions = regions_for_read,
@@ -1381,6 +1381,88 @@ cali_item_change_2100 <- GEER_AGMIP %>%
   mutate(cali_change = .data[[scenario_landint]] - .data[[scenario_baseline]]) %>%
   select(region, item, cali_change)
 
+r5_price_food_summary_2100 <- price_decomp_grouped %>%
+  filter(year == focus_year, scenario == scenario_landint, item %in% c("CRP", "LSP")) %>%
+  group_by(region, item) %>%
+  summarise(
+    domestic_price = sum(value, na.rm = TRUE),
+    residual_emission_price = sum(value[price_var == "residual_emission"], na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    world_qsup_prices %>%
+      filter(year == focus_year, scenario == scenario_landint, !is.na(group)) %>%
+      group_by(region, item = group) %>%
+      summarise(production_weight = sum(qsup, na.rm = TRUE), .groups = "drop"),
+    by = c("region", "item")
+  ) %>%
+  left_join(region_map %>% select(region, region5), by = "region") %>%
+  filter(!is.na(region5), is.finite(production_weight), production_weight > 0) %>%
+  group_by(region5, item) %>%
+  summarise(
+    country_count = n_distinct(region),
+    production_weight_sum = sum(production_weight, na.rm = TRUE),
+    domestic_price = sum(domestic_price * production_weight, na.rm = TRUE) / production_weight_sum,
+    residual_emission_price = sum(residual_emission_price * production_weight, na.rm = TRUE) / production_weight_sum,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    domestic_price_excluding_residual = domestic_price - residual_emission_price,
+    residual_share_of_total_price_pct = if_else(domestic_price != 0, 100 * residual_emission_price / domestic_price, NA_real_),
+    residual_price_increase_pct = if_else(domestic_price_excluding_residual != 0, 100 * residual_emission_price / domestic_price_excluding_residual, NA_real_)
+  ) %>%
+  left_join(
+    GEER_AGMIP_AGG %>%
+      filter(
+        region %in% names(r5_labels),
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable == "FOOD",
+        item %in% c("CRP", "LSP"),
+        unit == "million kcal"
+      ) %>%
+      mutate(region5 = recode(region, !!!r5_labels)) %>%
+      transmute(region5, item, scenario, food_pj = value * kcal_million_to_pj) %>%
+      pivot_wider(names_from = scenario, values_from = food_pj) %>%
+      transmute(
+        region5,
+        item,
+        food_bau_pj = .data[[scenario_baseline]],
+        food_miti_pj = .data[[scenario_landint]],
+        food_change_pj = .data[[scenario_landint]] - .data[[scenario_baseline]],
+        food_change_pct_of_bau = if_else(.data[[scenario_baseline]] != 0, 100 * (.data[[scenario_landint]] - .data[[scenario_baseline]]) / .data[[scenario_baseline]], NA_real_)
+      ),
+    by = c("region5", "item")
+  ) %>%
+  left_join(
+    GEER_AGMIP_AGG %>%
+      filter(
+        region %in% names(r5_labels),
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable == "CALI",
+        item %in% c("CRP", "LSP"),
+        unit == "kcal/cap/d"
+      ) %>%
+      mutate(region5 = recode(region, !!!r5_labels)) %>%
+      transmute(region5, item, scenario, calorie_intake_kcal_cap_d = value) %>%
+      pivot_wider(names_from = scenario, values_from = calorie_intake_kcal_cap_d) %>%
+      transmute(
+        region5,
+        item,
+        calorie_intake_bau_kcal_cap_d = .data[[scenario_baseline]],
+        calorie_intake_miti_kcal_cap_d = .data[[scenario_landint]],
+        calorie_intake_change_kcal_cap_d = .data[[scenario_landint]] - .data[[scenario_baseline]],
+        calorie_intake_change_pct_of_bau = if_else(.data[[scenario_baseline]] != 0, 100 * (.data[[scenario_landint]] - .data[[scenario_baseline]]) / .data[[scenario_baseline]], NA_real_)
+      ),
+    by = c("region5", "item")
+  ) %>%
+  mutate(
+    region5 = factor(region5, levels = r5_labels),
+    item_label = recode(item, CRP = "Crops", LSP = "Livestock")
+  ) %>%
+  arrange(region5, item)
+
 make_world_final_wedge_total_plot <- function(plot_year) {
   top_regions <- agmip_ag_reduction_rank %>%
     filter(year == plot_year) %>%
@@ -1980,6 +2062,30 @@ fig5 <- wrap_plots(
 
 save_plot("fig5_residual_share_vs_cali_scatter_2100.png", fig5, width = 6, height = 9)
 
+write_csv(
+  r5_price_food_summary_2100 %>%
+    transmute(
+      region5 = as.character(region5),
+      item = item_label,
+      country_count,
+      production_weight_sum,
+      domestic_price,
+      residual_emission_price,
+      domestic_price_excluding_residual,
+      residual_share_of_total_price_pct,
+      residual_price_increase_pct,
+      food_bau_pj,
+      food_miti_pj,
+      food_change_pj,
+      food_change_pct_of_bau,
+      calorie_intake_bau_kcal_cap_d,
+      calorie_intake_miti_kcal_cap_d,
+      calorie_intake_change_kcal_cap_d,
+      calorie_intake_change_pct_of_bau
+    ),
+  file.path(output_dir, "fig5_r5_price_residual_tax_food_consumption_summary_2100.csv")
+)
+
 # ---- Fig 6: Agricultural decomposition in 2100
 fig6 <- wrap_plots(
   make_world_final_wedge_r5_total_plot(focus_year),
@@ -2099,6 +2205,232 @@ write_csv(
   file.path(output_dir, "fig6a_top_bottom_country_decomposition_lmdi_summary_2100.csv")
 )
 
+miti_bau_structural_emission_increase_2100 <- world_lmdi_country_co2eq %>%
+  filter(year == focus_year, region %in% country_codes) %>%
+  transmute(
+    region,
+    country,
+    ag_emissions_change_mtco2e = total_change_mt,
+    structural_emissions_change_mtco2e = structural_mt
+  ) %>%
+  left_join(
+    world_lmdi_cell_co2eq %>%
+      filter(year == focus_year, region %in% country_codes) %>%
+      group_by(region) %>%
+      summarise(ag_emissions_bau_mtco2e = sum(e0_kt, na.rm = TRUE) / 1000, .groups = "drop"),
+    by = "region"
+  ) %>%
+  left_join(
+    GEER_AGMIP %>%
+      filter(
+        region %in% country_codes,
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable == "PROD",
+        item %in% c("CRP", "LSP"),
+        unit == "million kcal"
+      ) %>%
+      select(region, item, scenario, value) %>%
+      pivot_wider(names_from = scenario, values_from = value) %>%
+      mutate(
+        production_bau_pj = .data[[scenario_baseline]] * kcal_million_to_pj,
+        production_change_pj = (.data[[scenario_landint]] - .data[[scenario_baseline]]) * kcal_million_to_pj
+      ) %>%
+      select(region, item, production_bau_pj, production_change_pj) %>%
+      pivot_wider(names_from = item, values_from = c(production_bau_pj, production_change_pj), values_fill = 0) %>%
+      transmute(
+        region,
+        crp_production_bau_pj = production_bau_pj_CRP,
+        lsp_production_bau_pj = production_bau_pj_LSP,
+        total_production_bau_pj = production_bau_pj_CRP + production_bau_pj_LSP,
+        crp_production_change_pj = production_change_pj_CRP,
+        lsp_production_change_pj = production_change_pj_LSP,
+        total_production_change_pj = production_change_pj_CRP + production_change_pj_LSP
+      ),
+    by = "region"
+  ) %>%
+  left_join(
+    GEER_AGMIP %>%
+      filter(
+        region %in% country_codes,
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable == "EXPO",
+        item %in% c("CRP", "LSP"),
+        unit == "million kcal"
+      ) %>%
+      select(region, item, scenario, value) %>%
+      pivot_wider(names_from = scenario, values_from = value) %>%
+      mutate(
+        export_bau_pj = .data[[scenario_baseline]] * kcal_million_to_pj,
+        export_miti_pj = .data[[scenario_landint]] * kcal_million_to_pj,
+        export_change_pj = (.data[[scenario_landint]] - .data[[scenario_baseline]]) * kcal_million_to_pj
+      ) %>%
+      select(region, item, export_bau_pj, export_miti_pj, export_change_pj) %>%
+      pivot_wider(names_from = item, values_from = c(export_bau_pj, export_miti_pj, export_change_pj), values_fill = 0) %>%
+      transmute(
+        region,
+        crp_export_bau_pj = export_bau_pj_CRP,
+        lsp_export_bau_pj = export_bau_pj_LSP,
+        total_export_bau_pj = export_bau_pj_CRP + export_bau_pj_LSP,
+        crp_export_miti_pj = export_miti_pj_CRP,
+        lsp_export_miti_pj = export_miti_pj_LSP,
+        total_export_miti_pj = export_miti_pj_CRP + export_miti_pj_LSP,
+        crp_export_change_pj = export_change_pj_CRP,
+        lsp_export_change_pj = export_change_pj_LSP,
+        total_export_change_pj = export_change_pj_CRP + export_change_pj_LSP
+      ),
+    by = "region"
+  ) %>%
+  left_join(
+    GEER_AGMIP %>%
+      filter(
+        region %in% country_codes,
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable == "EMIS",
+        item %in% c("CRP", "LSP"),
+        unit == "MtCO2e"
+      ) %>%
+      select(region, item, scenario, value) %>%
+      pivot_wider(names_from = scenario, values_from = value) %>%
+      mutate(
+        emissions_bau_mtco2e = .data[[scenario_baseline]],
+        emissions_change_mtco2e = .data[[scenario_landint]] - .data[[scenario_baseline]]
+      ) %>%
+      select(region, item, emissions_bau_mtco2e, emissions_change_mtco2e) %>%
+      pivot_wider(names_from = item, values_from = c(emissions_bau_mtco2e, emissions_change_mtco2e), values_fill = 0) %>%
+      transmute(
+        region,
+        crp_emissions_bau_mtco2e = emissions_bau_mtco2e_CRP,
+        lsp_emissions_bau_mtco2e = emissions_bau_mtco2e_LSP,
+        total_crp_lsp_emissions_bau_mtco2e = emissions_bau_mtco2e_CRP + emissions_bau_mtco2e_LSP,
+        crp_emissions_change_mtco2e = emissions_change_mtco2e_CRP,
+        lsp_emissions_change_mtco2e = emissions_change_mtco2e_LSP,
+        total_crp_lsp_emissions_change_mtco2e = emissions_change_mtco2e_CRP + emissions_change_mtco2e_LSP
+      ),
+    by = "region"
+  ) %>%
+  left_join(
+    GEER_AGMIP %>%
+      filter(
+        region %in% country_codes,
+        year == focus_year,
+        scenario %in% c(scenario_baseline, scenario_landint),
+        variable %in% c("EMIS", "PROD"),
+        item %in% c("CRP", "LSP"),
+        unit %in% c("MtCO2e", "million kcal")
+      ) %>%
+      group_by(region, item, scenario, variable) %>%
+      summarise(value = sum(value, na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        value_for_factor = case_when(
+          variable == "PROD" ~ value * kcal_million_to_pj,
+          TRUE ~ value
+        ),
+        scenario_label = if_else(scenario == scenario_baseline, "bau", "miti"),
+        item_label = tolower(item)
+      ) %>%
+      select(region, item_label, scenario_label, variable, value_for_factor) %>%
+      pivot_wider(names_from = variable, values_from = value_for_factor) %>%
+      mutate(emission_factor_mtco2e_per_pj = if_else(PROD != 0, EMIS / PROD, NA_real_)) %>%
+      select(region, item_label, scenario_label, emission_factor_mtco2e_per_pj) %>%
+      pivot_wider(names_from = c(item_label, scenario_label), values_from = emission_factor_mtco2e_per_pj, values_fill = 0) %>%
+      transmute(
+        region,
+        crp_bau_emission_factor_mtco2e_per_pj = crp_bau,
+        lsp_bau_emission_factor_mtco2e_per_pj = lsp_bau,
+        crp_miti_emission_factor_mtco2e_per_pj = crp_miti,
+        lsp_miti_emission_factor_mtco2e_per_pj = lsp_miti
+      ),
+    by = "region"
+  ) %>%
+  mutate(
+    crp_export_emissions_bau_mtco2e = crp_export_bau_pj * crp_bau_emission_factor_mtco2e_per_pj,
+    lsp_export_emissions_bau_mtco2e = lsp_export_bau_pj * lsp_bau_emission_factor_mtco2e_per_pj,
+    total_export_emissions_bau_mtco2e = crp_export_emissions_bau_mtco2e + lsp_export_emissions_bau_mtco2e,
+    crp_export_emissions_miti_mtco2e = crp_export_miti_pj * crp_miti_emission_factor_mtco2e_per_pj,
+    lsp_export_emissions_miti_mtco2e = lsp_export_miti_pj * lsp_miti_emission_factor_mtco2e_per_pj,
+    total_export_emissions_miti_mtco2e = crp_export_emissions_miti_mtco2e + lsp_export_emissions_miti_mtco2e,
+    crp_export_emissions_change_mtco2e = crp_export_emissions_miti_mtco2e - crp_export_emissions_bau_mtco2e,
+    lsp_export_emissions_change_mtco2e = lsp_export_emissions_miti_mtco2e - lsp_export_emissions_bau_mtco2e,
+    total_export_emissions_change_mtco2e = crp_export_emissions_change_mtco2e + lsp_export_emissions_change_mtco2e
+  ) %>%
+  filter(structural_emissions_change_mtco2e > 0) %>%
+  arrange(desc(structural_emissions_change_mtco2e)) %>%
+  mutate(rank = row_number()) %>%
+  select(
+    rank,
+    region,
+    country,
+    ag_emissions_bau_mtco2e,
+    ag_emissions_change_mtco2e,
+    structural_emissions_change_mtco2e,
+    crp_emissions_bau_mtco2e,
+    lsp_emissions_bau_mtco2e,
+    total_crp_lsp_emissions_bau_mtco2e,
+    crp_emissions_change_mtco2e,
+    lsp_emissions_change_mtco2e,
+    total_crp_lsp_emissions_change_mtco2e,
+    crp_production_bau_pj,
+    lsp_production_bau_pj,
+    total_production_bau_pj,
+    crp_production_change_pj,
+    lsp_production_change_pj,
+    total_production_change_pj,
+    crp_export_bau_pj,
+    lsp_export_bau_pj,
+    total_export_bau_pj,
+    crp_export_miti_pj,
+    lsp_export_miti_pj,
+    total_export_miti_pj,
+    crp_export_change_pj,
+    lsp_export_change_pj,
+    total_export_change_pj,
+    crp_bau_emission_factor_mtco2e_per_pj,
+    lsp_bau_emission_factor_mtco2e_per_pj,
+    crp_miti_emission_factor_mtco2e_per_pj,
+    lsp_miti_emission_factor_mtco2e_per_pj,
+    crp_export_emissions_bau_mtco2e,
+    lsp_export_emissions_bau_mtco2e,
+    total_export_emissions_bau_mtco2e,
+    crp_export_emissions_miti_mtco2e,
+    lsp_export_emissions_miti_mtco2e,
+    total_export_emissions_miti_mtco2e,
+    crp_export_emissions_change_mtco2e,
+    lsp_export_emissions_change_mtco2e,
+    total_export_emissions_change_mtco2e
+)
+
+write_csv(
+  miti_bau_structural_emission_increase_2100,
+  file.path(output_dir, "miti_bau_structural_emission_increase_countries_2100.csv")
+)
+
+write_csv(
+  miti_bau_structural_emission_increase_2100 %>%
+    transmute(
+      rank,
+      region,
+      country,
+      ag_emissions_change_pct_of_bau = if_else(ag_emissions_bau_mtco2e != 0, 100 * ag_emissions_change_mtco2e / ag_emissions_bau_mtco2e, NA_real_),
+      structural_emissions_change_pct_of_bau_ag_emissions = if_else(ag_emissions_bau_mtco2e != 0, 100 * structural_emissions_change_mtco2e / ag_emissions_bau_mtco2e, NA_real_),
+      crp_emissions_change_pct_of_bau = if_else(crp_emissions_bau_mtco2e != 0, 100 * crp_emissions_change_mtco2e / crp_emissions_bau_mtco2e, NA_real_),
+      lsp_emissions_change_pct_of_bau = if_else(lsp_emissions_bau_mtco2e != 0, 100 * lsp_emissions_change_mtco2e / lsp_emissions_bau_mtco2e, NA_real_),
+      total_crp_lsp_emissions_change_pct_of_bau = if_else(total_crp_lsp_emissions_bau_mtco2e != 0, 100 * total_crp_lsp_emissions_change_mtco2e / total_crp_lsp_emissions_bau_mtco2e, NA_real_),
+      crp_production_change_pct_of_bau = if_else(crp_production_bau_pj != 0, 100 * crp_production_change_pj / crp_production_bau_pj, NA_real_),
+      lsp_production_change_pct_of_bau = if_else(lsp_production_bau_pj != 0, 100 * lsp_production_change_pj / lsp_production_bau_pj, NA_real_),
+      total_production_change_pct_of_bau = if_else(total_production_bau_pj != 0, 100 * total_production_change_pj / total_production_bau_pj, NA_real_),
+      crp_export_change_pct_of_bau = if_else(crp_export_bau_pj != 0, 100 * crp_export_change_pj / crp_export_bau_pj, NA_real_),
+      lsp_export_change_pct_of_bau = if_else(lsp_export_bau_pj != 0, 100 * lsp_export_change_pj / lsp_export_bau_pj, NA_real_),
+      total_export_change_pct_of_bau = if_else(total_export_bau_pj != 0, 100 * total_export_change_pj / total_export_bau_pj, NA_real_),
+      crp_export_emissions_change_pct_of_bau_export_emissions = if_else(crp_export_emissions_bau_mtco2e != 0, 100 * crp_export_emissions_change_mtco2e / crp_export_emissions_bau_mtco2e, NA_real_),
+      lsp_export_emissions_change_pct_of_bau_export_emissions = if_else(lsp_export_emissions_bau_mtco2e != 0, 100 * lsp_export_emissions_change_mtco2e / lsp_export_emissions_bau_mtco2e, NA_real_),
+      total_export_emissions_change_pct_of_bau_export_emissions = if_else(total_export_emissions_bau_mtco2e != 0, 100 * total_export_emissions_change_mtco2e / total_export_emissions_bau_mtco2e, NA_real_)
+    ),
+  file.path(output_dir, "miti_bau_structural_emission_increase_countries_2100_pct.csv")
+)
+
 # ---- Fig 7: AFOLU reduction-rate bubble plots
 make_afolu_rate_bubble_plot <- function(metric_col, x_label) {
   make_generic_bubble_plot(
@@ -2133,3 +2465,109 @@ fig7 <- wrap_plots(
   )
 
 save_plot("fig7_afolu_rate_bubbles_2100.png", fig7, width = 7, height = 16)
+
+# ---- Exploratory regression: demand-side contribution and price impacts
+demand_price_exploratory_2100 <- world_lmdi_country_co2eq %>%
+  filter(year == focus_year, region %in% country_codes) %>%
+  transmute(
+    region,
+    country,
+    demand_reduction_mt = -demand_mt,
+    structural_reduction_mt = -structural_mt,
+    technical_reduction_mt = -technical_mt,
+    total_reduction_mt = -total_change_mt,
+    total_positive_reduction_mt = pmax(-demand_mt, 0) + pmax(-structural_mt, 0) + pmax(-technical_mt, 0),
+    demand_reduction_share_pct = if_else(total_positive_reduction_mt > 0, 100 * pmax(-demand_mt, 0) / total_positive_reduction_mt, NA_real_),
+    demand_reduction_net_share_pct = if_else(is.finite(total_change_mt) & total_change_mt != 0, 100 * demand_mt / total_change_mt, NA_real_),
+    demand_mt,
+    structural_mt,
+    technical_mt,
+    total_change_mt
+  ) %>%
+  left_join(region_map %>% select(region, region5), by = "region") %>%
+  left_join(
+    price_decomp_grouped %>%
+      filter(year == focus_year, scenario == scenario_landint, item %in% c("CRP", "LSP")) %>%
+      group_by(region, item) %>%
+      summarise(price_2100 = sum(value, na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        price_abs_2100 = abs(price_2100),
+        item = recode(item, CRP = "Crops", LSP = "Livestock")
+      ),
+    by = "region"
+  ) %>%
+  left_join(
+    price_decomp_residual_share_2100 %>%
+      mutate(item = recode(item, CRP = "Crops", LSP = "Livestock")) %>%
+      select(region, item, total_price, residual_emission, price_transfer_rate_pct = residual_share_pct),
+    by = c("region", "item")
+  ) %>%
+  filter(is.finite(demand_reduction_share_pct), is.finite(price_abs_2100), !is.na(region5), !is.na(item))
+
+demand_price_regression_summary_2100 <- demand_price_exploratory_2100 %>%
+  group_by(item) %>%
+  group_modify(~ {
+    fit_df <- .x %>%
+      filter(is.finite(demand_reduction_share_pct), is.finite(price_abs_2100), price_abs_2100 > 0)
+    if (nrow(fit_df) < 3) {
+      return(tibble(n = nrow(fit_df), intercept = NA_real_, slope_log_price_abs = NA_real_, r_squared = NA_real_, p_value = NA_real_))
+    }
+    fit <- lm(demand_reduction_share_pct ~ log10(price_abs_2100), data = fit_df)
+    fit_sum <- summary(fit)
+    tibble(
+      n = nrow(fit_df),
+      intercept = unname(coef(fit)[1]),
+      slope_log_price_abs = unname(coef(fit)[2]),
+      r_squared = fit_sum$r.squared,
+      p_value = coef(fit_sum)[2, 4]
+    )
+  }) %>%
+  ungroup()
+
+fig_exploratory_demand_price <- ggplot(
+  demand_price_exploratory_2100 %>% filter(price_abs_2100 > 0),
+  aes(x = price_abs_2100, y = demand_reduction_share_pct, color = region5)
+) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+  geom_point(alpha = 0.8, size = 2.2) +
+  geom_smooth(aes(group = 1), method = "lm", se = TRUE, color = "black", linewidth = 0.6) +
+  facet_wrap(~ item, scales = "free_x") +
+  scale_x_log10() +
+  scale_color_manual(values = region_border_palette, guide = guide_legend(ncol = 3, byrow = TRUE)) +
+  labs(
+    x = "Absolute domestic price impact in 2100 (log scale)",
+    y = "Demand-side share of reducing factors (%)"
+  ) +
+  theme_main +
+  theme(legend.position = "bottom")
+
+save_plot("exploratory_demand_contribution_vs_price_2100.png", fig_exploratory_demand_price, width = 7, height = 4.8)
+
+write_csv(
+  demand_price_exploratory_2100 %>%
+    arrange(item, desc(demand_reduction_share_pct)) %>%
+    select(
+      region,
+      country,
+      region5,
+      item,
+      demand_reduction_mt,
+      structural_reduction_mt,
+      technical_reduction_mt,
+      demand_reduction_share_pct,
+      demand_reduction_net_share_pct,
+      total_reduction_mt,
+      total_positive_reduction_mt,
+      price_abs_2100,
+      price_2100,
+      price_transfer_rate_pct,
+      total_price,
+      residual_emission
+    ),
+  file.path(output_dir, "exploratory_demand_price_table_2100.csv")
+)
+
+write_csv(
+  demand_price_regression_summary_2100,
+  file.path(output_dir, "exploratory_demand_price_regression_summary_2100.csv")
+)
