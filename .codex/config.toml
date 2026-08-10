@@ -1,0 +1,22 @@
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+[mcp_servers.gams]
+command = "C:\\ALPHA\\gams-mcp-dev\\.venv\\Scripts\\python.exe"
+args = ["C:\\ALPHA\\gams-mcp-dev\\src\\server.py"]
+env = {
+  GAMS_MCP_PROJECT_ROOT = ".",
+  GAMS_EXE = "C:\\GAMS\\39\\gams.exe",
+  GDXDUMP_EXE = "C:\\GAMS\\39\\gdxdump.exe"
+}
+
+[mcp_servers.r]
+command = "Rscript"
+args = ["-e", "btw::btw_mcp_server()"]
+
+
+[mcp_servers.git]
+command = "uvx"
+args = ["--python", "3.13", "mcp-server-git", "--repository", "."]
+enabled = true
