@@ -56,7 +56,7 @@ for (path in figure_dirs) {
 unlink(file.path(
   source_data_root,
   c(
-    "figure_1d_luc_effect.csv", "figure_1e_bii_effect.csv",
+    "figure_1d_luc_effect.csv", "figure_1e_bii_effect.csv", "figure_1e_bii_scenarios.csv",
     "figure_3e_food_displacement_balance.csv",
     "figure_4abc_basin_yield_production.csv", "figure_4abcd_basin_yield_production.csv",
     "figure_4de_crp_decomposition.csv", "figure_4ef_crp_decomposition.csv",
@@ -206,6 +206,315 @@ merged_iamc <- rgdx.param(merged_file, "IAMCTempwoU") %>%
   ) %>%
   filter(!is.na(state))
 
+# Shared AIM-LU grid data for Figures 1 to 3 -------------------------------
+
+grid_years <- c(2005L, 2010L, seq(2020L, 2100L, by = 10L))
+
+# ============================================================================
+# TEMPORARY WORKAROUND FOR EXISTING NETCDF FILES ONLY
+# The current AIM-LUmap files were written by a combine.gms version that added
+# both Rbasin and its R17 aggregate to each grid cell.  Divide LC_area_share by
+# two until all NetCDF files have been regenerated with the corrected
+# combine.gms.  REMOVE this correction after that regeneration.
+# ============================================================================
+grid_export_duplicate_factor <- 2
+land_class_index <- c(
+  food = 1L, bio = 2L, natural_forest = 4L,
+  planted_forest = 5L, natural_grassland_other = 9L
+)
+land_class_labels <- c(
+  food = "Cropland", bio = "Bioenergy cropland",
+  planted_forest = "Planted forest", natural_land = "Natural land"
+)
+
+read_land_grid <- function(state) {
+  path <- file.path(
+    data_dir, "PLUM", "nc", paste0("AIM-LUmap_", states[[state]], ".nc")
+  )
+  all_layers <- rast(path, subds = "LC_area_share")
+  positions <- (unname(land_class_index) - 1L) * length(grid_years) +
+    match(target_year, grid_years)
+  selected <- all_layers[[positions]] / grid_export_duplicate_factor
+  names(selected) <- names(land_class_index)
+  result <- c(
+    selected[["food"]], selected[["bio"]], selected[["planted_forest"]],
+    selected[["natural_forest"]] + selected[["natural_grassland_other"]]
+  )
+  names(result) <- c("food", "bio", "planted_forest", "natural_land")
+  result
+}
+
+grid_states_needed <- c("000", "100", "010", "001", "011", "111")
+land_grids <- setNames(lapply(grid_states_needed, read_land_grid), grid_states_needed)
+reference_nc <- file.path(
+  data_dir, "PLUM", "nc", paste0("AIM-LUmap_", states[["011"]], ".nc")
+)
+pixel_area <- rast(reference_nc, subds = "pixel_area")
+all_reference_layers <- rast(reference_nc, subds = "LC_area_share")
+mask_positions <- (0:11) * length(grid_years) + match(target_year, grid_years)
+land_mask <- app(all_reference_layers[[mask_positions]], sum, na.rm = TRUE)
+land_mask[land_mask <= 0] <- NA
+
+to_map_data <- function(x, value_name = "value") {
+  data <- as.data.frame(mask(x, land_mask), xy = TRUE, na.rm = TRUE)
+  names(data)[[3]] <- value_name
+  data
+}
+
+# Supplementary: AIM-BIO species richness, compositional similarity and ESHI -
+
+# AIM-BIO grid outputs are on the 0.5-degree grid from 60S to 84N. Ocean cells
+# hold zero, so the AIM-LU land mask is applied. Land cells with zero species in
+# the Current layer (ice sheets and hyper-arid land) are excluded from the
+# percentile statistics. Species richness is summarised as the relative change
+# from the Current layer, (NS_future - NS_current) / NS_current; the
+# compositional similarity index is already relative to the present.
+biodiversity_dir <- file.path(data_dir, "AIMBIO")
+biodiversity_runs <- c(
+  `000` = "Baseline", `100` = "PROT_BaU", `011` = "1100C_CACN_DAC",
+  `111` = "PROT_1100C_CACN_DAC"
+)
+biodiversity_states <- c("000", "011", "111")
+biodiversity_years <- c(2030L, 2050L, 2070L, 2090L)
+biodiversity_year <- max(biodiversity_years[biodiversity_years <= target_year])
+biodiversity_indicators <- c(
+  SPnumber = "Species richness", ComSim = "Compositional similarity"
+)
+
+biodiversity_grid_file <- function(indicator, state, year = NULL) {
+  run <- biodiversity_runs[[state]]
+  stem <- if (is.null(year)) {
+    sprintf("%s_all_taxon_Current.tif", indicator)
+  } else {
+    sprintf("%s_all_taxon_%s_%d_LU.tif", indicator, run, year)
+  }
+  file.path(biodiversity_dir, indicator, paste0(run, "_LU_Pmig"), stem)
+}
+biodiversity_available <- vapply(
+  names(biodiversity_indicators),
+  function(indicator) {
+    all(file.exists(vapply(
+      biodiversity_states, biodiversity_grid_file,
+      character(1), indicator = indicator, year = biodiversity_year
+    )))
+  },
+  logical(1)
+)
+for (indicator in names(biodiversity_indicators)[!biodiversity_available]) {
+  message("AIM-BIO ", indicator, " grids are missing; the related supplementary plots are skipped.")
+}
+
+species_current <- rast(biodiversity_grid_file("SPnumber", "000"))
+biodiversity_land_mask <- crop(land_mask, ext(species_current))
+crs(biodiversity_land_mask) <- crs(species_current)
+biodiversity_occupied <- !is.na(values(biodiversity_land_mask)[, 1]) &
+  values(species_current)[, 1] > 0
+
+read_biodiversity_grid <- function(indicator, state, year) {
+  mask(rast(biodiversity_grid_file(indicator, state, year)), biodiversity_land_mask)
+}
+
+save_biodiversity_map <- function(layer, stem, fill_scale) {
+  data <- as.data.frame(layer, xy = TRUE, na.rm = TRUE)
+  names(data)[[3]] <- "value"
+  plot <- ggplot() +
+    geom_tile(data = data, aes(x, y, fill = value), width = .5, height = .5) +
+    geom_sf(
+      data = world_sf, fill = NA, colour = "grey30", linewidth = .12,
+      inherit.aes = FALSE
+    ) +
+    fill_scale +
+    coord_world_no_antarctica() +
+    theme_map() +
+    theme(
+      legend.text = element_text(size = 7),
+      legend.title = element_text(size = 7.5),
+      legend.key.width = unit(9, "mm")
+    )
+  ggsave(
+    file.path(supplementary_root, paste0(stem, ".png")), plot,
+    width = 7.2, height = 3.5, units = "in", dpi = 600,
+    bg = "white", limitsize = FALSE
+  )
+  ggsave(
+    file.path(supplementary_root, paste0(stem, ".pdf")), plot,
+    width = 7.2, height = 3.5, units = "in",
+    device = cairo_pdf, bg = "white", limitsize = FALSE
+  )
+}
+
+biodiversity_map_stem <- function(indicator) {
+  c(SPnumber = "supplementary_species_richness", ComSim = "supplementary_compositional_similarity")[[indicator]]
+}
+for (indicator in names(biodiversity_indicators)[biodiversity_available]) {
+  layers <- lapply(
+    biodiversity_states, read_biodiversity_grid,
+    indicator = indicator, year = biodiversity_year
+  )
+  names(layers) <- biodiversity_states
+  upper <- max(vapply(
+    layers, function(x) global(x, "max", na.rm = TRUE)[[1]], numeric(1)
+  ))
+  level_scale <- scale_fill_viridis_c(
+    limits = c(0, upper), oob = squish,
+    name = sprintf("%s, %d", biodiversity_indicators[[indicator]], biodiversity_year)
+  )
+  for (state in biodiversity_states) {
+    save_biodiversity_map(
+      layers[[state]],
+      sprintf("%s_%s", biodiversity_map_stem(indicator), scenario_labels[[state]]),
+      level_scale
+    )
+  }
+  delta <- layers[["111"]] - layers[["011"]]
+  delta_limit <- symmetric_limit(values(delta)[, 1])
+  save_biodiversity_map(
+    delta, sprintf("%s_MITI_PROT_minus_MITI", biodiversity_map_stem(indicator)),
+    scale_fill_gradient2(
+      low = "#7B3294", mid = "#F7F7F7", high = "#008837", midpoint = 0,
+      limits = c(-delta_limit, delta_limit), oob = squish,
+      name = sprintf("%s, MITI_PROT − MITI, %d", biodiversity_indicators[[indicator]], biodiversity_year)
+    )
+  )
+  grid_stack <- c(layers[["011"]], layers[["111"]], delta)
+  names(grid_stack) <- c("MITI", "MITI_PROT", "MITI_PROT_minus_MITI")
+  write_csv(
+    as.data.frame(grid_stack, xy = TRUE, na.rm = TRUE) %>% rename(lon = x, lat = y),
+    file.path(source_data_root, sprintf("%s_grid.csv.gz", biodiversity_map_stem(indicator)))
+  )
+}
+
+biodiversity_trajectories <- lapply(
+  names(biodiversity_indicators)[biodiversity_available],
+  function(indicator) {
+    lapply(biodiversity_states, function(state) {
+      current <- values(rast(biodiversity_grid_file(indicator, state)))[, 1]
+      lapply(biodiversity_years, function(year) {
+        v <- values(read_biodiversity_grid(indicator, state, year))[, 1]
+        if (indicator == "SPnumber") v <- (v - current) / current
+        v <- v[biodiversity_occupied]
+        tibble(
+          indicator = indicator, state = state, year = year,
+          mean = mean(v, na.rm = TRUE),
+          median = median(v, na.rm = TRUE),
+          lower = unname(quantile(v, .25, na.rm = TRUE)),
+          upper = unname(quantile(v, .75, na.rm = TRUE))
+        )
+      }) %>% bind_rows()
+    }) %>% bind_rows()
+  }
+) %>% bind_rows() %>%
+  mutate(
+    scenario = factor(unname(scenario_labels[state]),
+                      levels = unname(scenario_labels[biodiversity_states]))
+  )
+write_csv(
+  biodiversity_trajectories,
+  file.path(source_data_root, "supplementary_biodiversity_grid_trajectories.csv")
+)
+
+biodiversity_axis_labels <- c(
+  SPnumber = "Change in species richness relative to current",
+  ComSim = "Compositional similarity to current"
+)
+plot_biodiversity_trajectory <- function(indicator) {
+  data <- biodiversity_trajectories %>% filter(.data$indicator == .env$indicator)
+  y_labels <- if (indicator == "SPnumber") label_percent(accuracy = 1) else waiver()
+  ggplot(data, aes(year, colour = state)) +
+    geom_line(aes(y = lower, group = scenario), linetype = "dashed", linewidth = .45) +
+    geom_line(aes(y = upper, group = scenario), linetype = "dashed", linewidth = .45) +
+    geom_line(aes(y = mean, group = scenario), linewidth = .7) +
+    geom_point(aes(y = mean), size = 1.2) +
+    scale_colour_manual(
+      values = scenario_colours[biodiversity_states],
+      breaks = biodiversity_states, labels = scenario_labels[biodiversity_states],
+      name = NULL
+    ) +
+    scale_x_continuous(breaks = biodiversity_years) +
+    scale_y_continuous(labels = y_labels) +
+    labs(
+      x = NULL,
+      y = paste0(biodiversity_axis_labels[[indicator]], "\n(mean, 25th and 75th percentiles)")
+    ) +
+    theme_pub() +
+    theme(legend.position = "bottom")
+}
+trajectory_panels <- lapply(
+  names(biodiversity_indicators)[biodiversity_available], plot_biodiversity_trajectory
+)
+supp_biodiversity_trajectories <- wrap_plots(trajectory_panels, nrow = 1, guides = "collect") &
+  theme(legend.position = "bottom")
+ggsave(
+  file.path(supplementary_root, "supplementary_biodiversity_trajectories.png"),
+  supp_biodiversity_trajectories,
+  width = 3.6 * length(trajectory_panels), height = 3.2, units = "in", dpi = 600,
+  bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_biodiversity_trajectories.pdf"),
+  supp_biodiversity_trajectories,
+  width = 3.6 * length(trajectory_panels), height = 3.2, units = "in",
+  device = cairo_pdf, bg = "white", limitsize = FALSE
+)
+
+# ESHI is the geometric-mean extent of suitable habitat relative to 2005,
+# aggregated by AIM-BIO to the five R5 regions.
+eshi_regions <- c(
+  World = "World", R5OECD90_EU = "OECD90 + EU", R5REF = "Reforming economies",
+  R5ASIA = "Asia", R5MAF = "Middle East & Africa", R5LAM = "Latin America"
+)
+eshi_states <- biodiversity_states
+eshi_file <- function(state) {
+  list.files(
+    file.path(biodiversity_dir, "ESH"), full.names = TRUE,
+    pattern = sprintf("^ESHI_RegionAgg_%s-.*\\.csv$", biodiversity_runs[[state]])
+  )
+}
+eshi_data <- lapply(eshi_states, function(state) {
+  path <- eshi_file(state)
+  if (length(path) != 1L) {
+    message("ESHI file for ", scenario_labels[[state]], " is missing; the scenario is skipped.")
+    return(NULL)
+  }
+  read_csv(path, show_col_types = FALSE) %>%
+    filter(indicator == "ESH.rel2005.geom.Pmigdisp.allspecies", region %in% names(eshi_regions)) %>%
+    select(region, starts_with("X")) %>%
+    pivot_longer(starts_with("X"), names_to = "year", values_to = "eshi") %>%
+    mutate(state = state, year = as.integer(sub("^X", "", year)))
+}) %>% bind_rows() %>%
+  mutate(
+    region = factor(unname(eshi_regions[region]), levels = unname(eshi_regions)),
+    scenario = factor(unname(scenario_labels[state]),
+                      levels = unname(scenario_labels[eshi_states]))
+  )
+write_csv(eshi_data, file.path(source_data_root, "supplementary_eshi_regions.csv"))
+eshi_present <- intersect(eshi_states, unique(eshi_data$state))
+
+supp_eshi <- ggplot(eshi_data, aes(year, eshi, colour = state, group = scenario)) +
+  geom_hline(yintercept = 1, colour = "grey60", linewidth = .3) +
+  geom_line(linewidth = .7) +
+  geom_point(size = 1.2) +
+  facet_wrap(~region, nrow = 2) +
+  scale_colour_manual(
+    values = scenario_colours[eshi_present], breaks = eshi_present,
+    labels = scenario_labels[eshi_present], name = NULL
+  ) +
+  scale_x_continuous(breaks = biodiversity_years) +
+  labs(x = NULL, y = "ESHI, all species (relative to 2005)") +
+  theme_pub() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(size = 6.5)
+  )
+ggsave(
+  file.path(supplementary_root, "supplementary_eshi_regions.png"), supp_eshi,
+  width = 7.2, height = 4.6, units = "in", dpi = 600, bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_eshi_regions.pdf"), supp_eshi,
+  width = 7.2, height = 4.6, units = "in", device = cairo_pdf, bg = "white", limitsize = FALSE
+)
+
 # Figure 1: land-system change ----------------------------------------------
 
 land_variables <- c(
@@ -218,7 +527,7 @@ land_variables <- c(
   Lan_Cov_Pst = "Pasture",
   Lan_Cov_Oth_Nat_Lan = "Other natural land",
   Lan_Cov_Bui_Are = "Built-up area",
-  Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int = "Protected footprint"
+  Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int = "Protected area"
 )
 land_raw <- merged_iamc %>%
   filter(
@@ -232,9 +541,19 @@ land_raw <- merged_iamc %>%
 
 main_states <- c("000", "011", "111")
 trajectory_classes <- c(
-  "Food cropland", "Bioenergy cropland", "Planted forest"
+  "Food cropland", "Bioenergy cropland", "Planted forest", "Natural land"
 )
-fig1a_data <- land_raw %>%
+# Natural land is forest excluding planted forest plus other natural land.
+# Lan_Cov_Frs_Aff is not reported before afforestation starts and counts as zero.
+natural_land_raw <- land_raw %>%
+  filter(land_class %in% c("Forest", "Planted forest", "Other natural land")) %>%
+  pivot_wider(names_from = land_class, values_from = area_mha) %>%
+  mutate(`Planted forest` = coalesce(`Planted forest`, 0)) %>%
+  transmute(
+    state, geography, year, land_class = "Natural land",
+    area_mha = Forest - `Planted forest` + `Other natural land`
+  )
+fig1a_data <- bind_rows(land_raw, natural_land_raw) %>%
   filter(
     geography == "WLD", state %in% main_states,
     land_class %in% trajectory_classes
@@ -354,7 +673,7 @@ p1b <- ggplot(
     breaks = seq_along(r10_labels), labels = unname(r10_labels),
     expand = expansion(mult = c(.025, .025))
   ) +
-  scale_y_continuous(labels = label_number(accuracy = .1, suffix = "%")) +
+  scale_y_continuous(labels = label_number(accuracy = 1)) +
   labs(
     title = paste0("Regional land change, 2020–", target_year),
     x = NULL, y = "Change (% of 2020 regional land)"
@@ -378,12 +697,12 @@ p1b <- ggplot(
 fig1c_observed <- land_raw %>%
   filter(
     geography == "WLD", state %in% main_states, year >= 2020,
-    land_class %in% c("Total land", "Protected footprint")
+    land_class %in% c("Total land", "Protected area")
   ) %>%
   pivot_wider(names_from = land_class, values_from = area_mha) %>%
-  filter(!is.na(`Protected footprint`)) %>%
+  filter(!is.na(`Protected area`)) %>%
   mutate(
-    protected_share_pct = 100 * `Protected footprint` / `Total land`,
+    protected_share_pct = 100 * `Protected area` / `Total land`,
     value_origin = "model output"
   )
 initial_protected_share <- fig1c_observed %>%
@@ -397,7 +716,7 @@ fig1c_initial <- land_raw %>%
   ) %>%
   transmute(
     state, geography, year, `Total land` = area_mha,
-    `Protected footprint` = area_mha * initial_protected_share / 100,
+    `Protected area` = area_mha * initial_protected_share / 100,
     protected_share_pct = initial_protected_share,
     value_origin = "common 2020 baseline"
   )
@@ -418,12 +737,16 @@ p1c <- ggplot(fig1c_data, aes(year, protected_share_pct, colour = state)) +
   ) +
   scale_x_continuous(breaks = seq(2020, target_year, by = 20)) +
   scale_y_continuous(
-    limits = c(0, NA), labels = label_number(accuracy = 1, suffix = "%"),
+    limits = c(0, NA), labels = label_number(accuracy = 1),
     expand = expansion(mult = c(0, .04))
   ) +
-  labs(title = "Protected land", x = NULL, y = "Share of total land") +
+  labs(title = "Protected land", x = NULL, y = "Share of total land (%)") +
   theme_pub() +
-  theme(legend.position = "none", panel.grid.major.x = element_blank())
+  theme(
+    legend.position = "bottom", panel.grid.major.x = element_blank(),
+    legend.text = element_text(size = 6.5)
+  ) +
+  guides(colour = guide_legend(nrow = 1))
 
 # Cumulative LUC emissions and removals exclude managed-forest fluxes.
 ghgl <- rgdx.param(merged_file, "GHGL") %>%
@@ -480,7 +803,7 @@ p1d <- ggplot(fig1d_data, aes(scenario, cumulative_gtco2, fill = component)) +
                     name = NULL) +
   scale_y_continuous(labels = label_number(accuracy = 1)) +
   labs(title = "Cumulative LUC flux", x = NULL,
-       y = expression("Gt CO"[2])) +
+       y = expression("Cumulative flux (Gt CO"[2]*")")) +
   theme_pub() +
   theme(
     axis.text.x = element_text(angle = 25, hjust = 1, size = 6.8),
@@ -488,103 +811,36 @@ p1d <- ggplot(fig1d_data, aes(scenario, cumulative_gtco2, fill = component)) +
     legend.text = element_text(size = 6.5)
   )
 
-bii_years <- c(2005L, 2010L, seq(2020L, 2100L, by = 10L))
-read_bii <- function(state) {
-  path <- file.path(
-    data_dir, "BII", "nc", paste0("BIImap_", states[[state]], "_default.nc")
-  )
-  rast(path, subds = "BII")[[match(target_year, bii_years)]]
-}
-fig1e_data <- lapply(c("011", "111"), function(state_id) {
-  bii_layer <- read_bii(state_id)
-  bii_area <- cellSize(bii_layer, unit = "km")
-  valid_area <- ifel(is.na(bii_layer), NA, bii_area)
-  tibble(
-    state = state_id,
-    bii = global(bii_layer * valid_area, "sum", na.rm = TRUE)[[1]] /
-      global(valid_area, "sum", na.rm = TRUE)[[1]]
-  )
-}) %>% bind_rows() %>%
-  mutate(
-    scenario = factor(unname(scenario_labels[state]),
-                      levels = unname(scenario_labels[c("011", "111")]))
-  )
-write_csv(fig1e_data, file.path(source_data_root, "figure_1e_bii_scenarios.csv"))
+fig1e_data <- biodiversity_trajectories %>%
+  filter(indicator == "SPnumber", state %in% c("011", "111")) %>%
+  mutate(across(c(mean, median, lower, upper), ~ 100 * .x))
+write_csv(fig1e_data, file.path(source_data_root, "figure_1e_species_richness.csv"))
 
-p1e <- ggplot(fig1e_data, aes(scenario, bii, colour = state, group = 1)) +
-  geom_line(colour = "grey55", linewidth = .4) +
-  geom_point(size = 2.4) +
-  scale_colour_manual(values = scenario_colours[c("011", "111")], guide = "none") +
-  scale_y_continuous(labels = label_number(accuracy = .0001),
-                     expand = expansion(mult = c(.15, .15))) +
-  labs(title = paste0("BII in ", target_year), x = NULL, y = "Area-weighted BII") +
+p1e <- ggplot(fig1e_data, aes(year, colour = state, group = scenario)) +
+  geom_hline(yintercept = 0, colour = "grey60", linewidth = .3) +
+  geom_line(aes(y = mean), linewidth = .7) +
+  geom_point(aes(y = mean), size = 1.1) +
+  scale_colour_manual(
+    values = scenario_colours[c("011", "111")], breaks = c("011", "111"),
+    labels = scenario_labels[c("011", "111")], name = NULL
+  ) +
+  scale_x_continuous(breaks = biodiversity_years) +
+  scale_y_continuous(labels = label_number(accuracy = 1)) +
+  labs(title = "Species richness", x = NULL,
+       y = "Change from 2005 (%)") +
   theme_pub() +
   theme(
-    axis.text.x = element_text(angle = 25, hjust = 1, size = 6.8),
-    panel.grid.major.x = element_blank()
-  )
+    legend.position = "bottom", legend.text = element_text(size = 6.5),
+    axis.text.x = element_text(size = 6.8), panel.grid.major.x = element_blank()
+  ) +
+  guides(colour = guide_legend(nrow = 1))
 
 figure_1 <- p1a / p1b / (p1c | p1d | p1e) +
   plot_layout(heights = c(1.00, 1.20, .8)) +
   plot_annotation(tag_levels = "a", theme = tag_theme)
 save_figure(figure_1, 1, width = 7.2, height = 8.0)
 
-# Shared AIM-LU grid data for Figures 2 and 3 -------------------------------
-
-grid_years <- c(2005L, 2010L, seq(2020L, 2100L, by = 10L))
-
-# ============================================================================
-# TEMPORARY WORKAROUND FOR EXISTING NETCDF FILES ONLY
-# The current AIM-LUmap files were written by a combine.gms version that added
-# both Rbasin and its R17 aggregate to each grid cell.  Divide LC_area_share by
-# two until all NetCDF files have been regenerated with the corrected
-# combine.gms.  REMOVE this correction after that regeneration.
-# ============================================================================
-grid_export_duplicate_factor <- 2
-land_class_index <- c(
-  food = 1L, bio = 2L, natural_forest = 4L,
-  planted_forest = 5L, natural_grassland_other = 9L
-)
-land_class_labels <- c(
-  food = "Cropland", bio = "Bioenergy cropland",
-  planted_forest = "Planted forest", natural_land = "Natural land"
-)
-
-read_land_grid <- function(state) {
-  path <- file.path(
-    data_dir, "PLUM", "nc", paste0("AIM-LUmap_", states[[state]], ".nc")
-  )
-  all_layers <- rast(path, subds = "LC_area_share")
-  positions <- (unname(land_class_index) - 1L) * length(grid_years) +
-    match(target_year, grid_years)
-  selected <- all_layers[[positions]] / grid_export_duplicate_factor
-  names(selected) <- names(land_class_index)
-  result <- c(
-    selected[["food"]], selected[["bio"]], selected[["planted_forest"]],
-    selected[["natural_forest"]] + selected[["natural_grassland_other"]]
-  )
-  names(result) <- c("food", "bio", "planted_forest", "natural_land")
-  result
-}
-
-grid_states_needed <- c("000", "100", "010", "001", "011", "111")
-land_grids <- setNames(lapply(grid_states_needed, read_land_grid), grid_states_needed)
-reference_nc <- file.path(
-  data_dir, "PLUM", "nc", paste0("AIM-LUmap_", states[["011"]], ".nc")
-)
-pixel_area <- rast(reference_nc, subds = "pixel_area")
-all_reference_layers <- rast(reference_nc, subds = "LC_area_share")
-mask_positions <- (0:11) * length(grid_years) + match(target_year, grid_years)
-land_mask <- app(all_reference_layers[[mask_positions]], sum, na.rm = TRUE)
-land_mask[land_mask <= 0] <- NA
-
-to_map_data <- function(x, value_name = "value") {
-  data <- as.data.frame(mask(x, land_mask), xy = TRUE, na.rm = TRUE)
-  names(data)[[3]] <- value_name
-  data
-}
-
-# Figure 2: protection pressure and land response ---------------------------
+# Supplementary: basin-level protection pressure and land response ----------
 
 basin_boundaries <- st_read(
   file.path(data_dir, "Basin_Boundary", "Basin_Boundary.shp"), quiet = TRUE
@@ -592,55 +848,378 @@ basin_boundaries <- st_read(
   transmute(country = as.character(ISO_A3), basin = as.character(Basin))
 
 basin_protection <- rgdx.param(
-  file.path(data_dir, "ALPHA", "plum_data.gdx"), "protPlum"
+  file.path(data_dir, "ALPHA", "all_scenario_World.gdx"), "qlProt_load"
 ) %>%
   filter(
-    sce_plum %in% plum_states[c("011", "111")],
-    as.integer(as.character(yr)) == target_year,
-    lu_prot %in% c("primf", "secdf", "gra")
+    SCENARIO %in% states[c("011", "111")],
+    as.integer(as.character(Y)) == target_year,
+    lu_pa %in% c("primf", "secdf", "gra", "pastr", "range")
   ) %>%
   transmute(
-    state = state_from_scenario(sce_plum, plum_states),
-    land_type = as.character(lu_prot), basin = as.character(bas),
-    country = as.character(cty), protected_share = as.numeric(protPlum)
+    state = state_from_scenario(SCENARIO),
+    land_type = as.character(lu_pa), basin = as.character(bas),
+    country = as.character(cty), protected_area_1000ha = as.numeric(qlProt_load)
   ) %>%
   complete(
     nesting(basin, country), state = c("011", "111"),
-    land_type = c("primf", "secdf", "gra"),
-    fill = list(protected_share = 0)
+    land_type = c("primf", "secdf", "gra", "pastr", "range"),
+    fill = list(protected_area_1000ha = 0)
   ) %>%
   group_by(state, basin, country) %>%
-  summarise(protected_share = mean(protected_share), .groups = "drop") %>%
-  pivot_wider(names_from = state, values_from = protected_share, values_fill = 0) %>%
+  summarise(protected_area_1000ha = sum(protected_area_1000ha), .groups = "drop") %>%
+  pivot_wider(names_from = state, values_from = protected_area_1000ha, values_fill = 0) %>%
+  left_join(
+    rgdx.param(file.path(data_dir, "ALPHA", "all_scenario_World.gdx"), "qlTot_load") %>%
+      filter(
+        SCENARIO %in% states[c("011", "111")],
+        as.integer(as.character(Y)) == target_year
+      ) %>%
+      transmute(
+        basin = as.character(bas), country = as.character(cty),
+        basin_land_1000ha = as.numeric(qlTot_load)
+      ) %>%
+      distinct(basin, country, .keep_all = TRUE),
+    by = c("basin", "country")
+  ) %>%
+  mutate(
+    protection_area_increase_1000ha = `111` - `011`,
+    protection_increase_pct = 100 * protection_area_increase_1000ha /
+      basin_land_1000ha
+  ) %>%
+  select(
+    basin, country, basin_land_1000ha, `011`, `111`,
+    protection_area_increase_1000ha, protection_increase_pct
+  ) %>%
+  right_join(
+    rgdx.param(file.path(data_dir, "ALPHA", "all_scenario_World.gdx"), "qlTot_load") %>%
+      filter(
+        SCENARIO %in% states[c("011", "111")],
+        as.integer(as.character(Y)) == target_year
+      ) %>%
+      transmute(
+        basin = as.character(bas), country = as.character(cty),
+        basin_land_all_1000ha = as.numeric(qlTot_load)
+      ) %>%
+      distinct(basin, country, .keep_all = TRUE),
+    by = c("basin", "country")
+  ) %>%
+  mutate(
+    basin_land_1000ha = coalesce(basin_land_1000ha, basin_land_all_1000ha),
+    across(
+      c(`011`, `111`, protection_area_increase_1000ha,
+        protection_increase_pct),
+      ~ replace_na(.x, 0)
+    )
+  ) %>%
+  select(-basin_land_all_1000ha)
+basin_protection_qlprot <- basin_protection
+write_csv(
+  basin_protection_qlprot,
+  file.path(source_data_root, "supplementary_figure_2_qlprot_pressure.csv")
+)
+
+# Figure 2 uses the AIM-PLUM integrated protected-area series reported in
+# MergedComparison. Basin geographies are encoded as COUNTRY_BASIN in i2.
+merged_protection_variable <- "Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int"
+merged_basin_keys <- basin_boundaries %>%
+  st_drop_geometry() %>%
   transmute(
-    basin, country, protection_increase_pp = 100 * (`111` - `011`)
+    country = as.character(country), basin = as.character(basin),
+    geography = paste(country, basin, sep = "_")
   )
-write_csv(basin_protection, file.path(source_data_root, "figure_2_basin_protection_pressure.csv"))
+merged_basin_protection <- merged_iamc %>%
+  filter(
+    state %in% c("011", "111"),
+    geography %in% merged_basin_keys$geography,
+    variable == merged_protection_variable,
+    year == target_year
+  ) %>%
+  transmute(state, geography, protected_area_mha = value) %>%
+  complete(
+    geography = merged_basin_keys$geography,
+    state = c("011", "111"),
+    fill = list(protected_area_mha = 0)
+  ) %>%
+  pivot_wider(
+    names_from = state, values_from = protected_area_mha, values_fill = 0
+  ) %>%
+  left_join(merged_basin_keys, by = "geography")
+
+basin_protection <- merged_basin_protection %>%
+  left_join(
+    basin_protection_qlprot %>%
+      select(basin, country, basin_land_1000ha),
+    by = c("basin", "country")
+  ) %>%
+  transmute(
+    basin, country, geography, basin_land_1000ha,
+    miti_protected_mha = `011`,
+    miti_prot_protected_mha = `111`,
+    protection_area_increase_mha = miti_prot_protected_mha -
+      miti_protected_mha,
+    protection_increase_pct = 100 * protection_area_increase_mha /
+      (basin_land_1000ha / 1000)
+  )
+write_csv(
+  basin_protection,
+  file.path(source_data_root, "supplementary_figure_2_basin_protection_pressure.csv")
+)
+
+# Supplementary: BAU and PROT protection distributions ----------------------
+#
+# These panels use the direct ALPHA protected-area output (qlProt_load), not
+# the PLUM target-share variable. Values are shown both as area and as a share
+# of total basin land for the two non-CDR scenarios.
+supp_protection_states <- c("000", "100")
+supp_protection_classes <- c("primf", "secdf", "gra", "pastr", "range")
+supp_total_land <- rgdx.param(
+  file.path(data_dir, "ALPHA", "all_scenario_World.gdx"), "qlTot_load"
+) %>%
+  filter(
+    SCENARIO %in% states[supp_protection_states],
+    as.integer(as.character(Y)) == target_year
+  ) %>%
+  transmute(
+    basin = as.character(bas), country = as.character(cty),
+    basin_land_1000ha = as.numeric(qlTot_load)
+  ) %>%
+  distinct(basin, country, .keep_all = TRUE)
+
+supp_protection <- rgdx.param(
+  file.path(data_dir, "ALPHA", "all_scenario_World.gdx"), "qlProt_load"
+) %>%
+  filter(
+    SCENARIO %in% states[supp_protection_states],
+    as.integer(as.character(Y)) == target_year,
+    lu_pa %in% supp_protection_classes
+  ) %>%
+  transmute(
+    state = state_from_scenario(SCENARIO),
+    basin = as.character(bas), country = as.character(cty),
+    land_type = as.character(lu_pa),
+    protected_area_1000ha = as.numeric(qlProt_load)
+  ) %>%
+  complete(
+    nesting(basin, country), state = supp_protection_states,
+    land_type = supp_protection_classes,
+    fill = list(protected_area_1000ha = 0)
+  ) %>%
+  group_by(state, basin, country) %>%
+  summarise(
+    protected_area_1000ha = sum(protected_area_1000ha), .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = state, values_from = protected_area_1000ha, values_fill = 0
+  ) %>%
+  right_join(supp_total_land, by = c("basin", "country")) %>%
+  mutate(
+    `000` = replace_na(`000`, 0), `100` = replace_na(`100`, 0),
+    bau_protected_area_1000ha = `000`,
+    prot_protected_area_1000ha = `100`,
+    bau_protected_area_mha = bau_protected_area_1000ha / 1000,
+    prot_protected_area_mha = prot_protected_area_1000ha / 1000,
+    bau_protected_pct = 100 * bau_protected_area_1000ha / basin_land_1000ha,
+    prot_protected_pct = 100 * prot_protected_area_1000ha / basin_land_1000ha,
+    additional_protected_area_1000ha = prot_protected_area_1000ha -
+      bau_protected_area_1000ha,
+    additional_protected_pct = 100 * additional_protected_area_1000ha /
+      basin_land_1000ha
+  ) %>%
+  select(
+    basin, country, basin_land_1000ha,
+    bau_protected_area_1000ha, prot_protected_area_1000ha,
+    bau_protected_area_mha, prot_protected_area_mha,
+    bau_protected_pct, prot_protected_pct,
+    additional_protected_area_1000ha, additional_protected_pct
+  )
+write_csv(
+  supp_protection,
+  file.path(source_data_root, "supplementary_bau_prot_protection_distribution.csv")
+)
+
+supp_protection_sf <- basin_boundaries %>%
+  left_join(supp_protection, by = c("country", "basin"))
+supp_abs_limit <- max(
+  c(supp_protection_sf$bau_protected_area_mha,
+    supp_protection_sf$prot_protected_area_mha),
+  na.rm = TRUE
+)
+supp_pct_limit <- max(
+  c(supp_protection_sf$bau_protected_pct, supp_protection_sf$prot_protected_pct),
+  na.rm = TRUE
+)
+
+make_supp_protection_map <- function(variable, title, tag, limits, legend) {
+  ggplot() +
+    geom_sf(
+      data = supp_protection_sf, aes(fill = .data[[variable]]),
+      colour = NA
+    ) +
+    geom_sf(data = world_sf, fill = NA, colour = "grey30", linewidth = .12) +
+    scale_fill_gradient(
+      low = "#F2F0F7", high = "#54278F", limits = limits,
+      oob = squish, na.value = "grey94", name = legend
+    ) +
+    coord_world_no_antarctica() +
+    labs(title = title, tag = tag) +
+    theme_map() + small_map_tag_theme +
+    theme(
+      legend.text = element_text(size = 6),
+      legend.title = element_text(size = 6.5)
+    )
+}
+
+supp_bau_abs <- make_supp_protection_map(
+  "bau_protected_area_mha", "BAU", "a", c(0, supp_abs_limit),
+  "Protected area (Mha)"
+)
+supp_prot_abs <- make_supp_protection_map(
+  "prot_protected_area_mha", "PROT", "b", c(0, supp_abs_limit),
+  "Protected area (Mha)"
+)
+supp_bau_pct <- make_supp_protection_map(
+  "bau_protected_pct", "BAU", "c", c(0, supp_pct_limit),
+  "Protected area (% of basin land)"
+)
+supp_prot_pct <- make_supp_protection_map(
+  "prot_protected_pct", "PROT", "d", c(0, supp_pct_limit),
+  "Protected area (% of basin land)"
+)
+supp_protection_figure <-
+  ((supp_bau_abs | supp_prot_abs) / (supp_bau_pct | supp_prot_pct)) +
+  plot_layout(heights = c(1, 1), guides = "keep")
+ggsave(
+  file.path(supplementary_root, "supplementary_bau_prot_protection_distribution.png"),
+  supp_protection_figure, width = 7.2, height = 6.4, units = "in", dpi = 600,
+  bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_bau_prot_protection_distribution.pdf"),
+  supp_protection_figure, width = 7.2, height = 6.4, units = "in",
+  device = cairo_pdf, bg = "white", limitsize = FALSE
+)
+
+# Supplementary comparison of the former qlProt pressure and the
+# MergedComparison protected-area series now used in Figure 2a.
+protection_pressure_comparison <- basin_protection_qlprot %>%
+  select(
+    basin, country,
+    qlprot_additional_pct = protection_increase_pct
+  ) %>%
+  left_join(
+    basin_protection %>%
+      select(
+        basin, country,
+        merged_additional_pct = protection_increase_pct
+      ),
+    by = c("basin", "country")
+  ) %>%
+  mutate(
+    merged_minus_qlprot_pp = merged_additional_pct - qlprot_additional_pct
+  )
+write_csv(
+  protection_pressure_comparison,
+  file.path(
+    source_data_root,
+    "supplementary_figure_2_pressure_source_comparison.csv"
+  )
+)
+protection_pressure_comparison_sf <- basin_boundaries %>%
+  left_join(protection_pressure_comparison, by = c("country", "basin"))
+comparison_positive_limit <- quantile(
+  c(
+    protection_pressure_comparison$qlprot_additional_pct,
+    protection_pressure_comparison$merged_additional_pct
+  ),
+  .98, na.rm = TRUE
+)
+comparison_difference_limit <- symmetric_limit(
+  protection_pressure_comparison$merged_minus_qlprot_pp
+)
+make_pressure_source_map <- function(variable, title, tag) {
+  ggplot() +
+    geom_sf(
+      data = protection_pressure_comparison_sf,
+      aes(fill = .data[[variable]]), colour = NA
+    ) +
+    geom_sf(data = world_sf, fill = NA, colour = "grey30", linewidth = .12) +
+    scale_fill_gradient(
+      low = "#F2F0F7", high = "#54278F",
+      limits = c(0, comparison_positive_limit), oob = squish,
+      na.value = "grey94",
+      name = "Additional protected area\n(% of total basin land)"
+    ) +
+    coord_world_no_antarctica() +
+    labs(title = title, tag = tag) +
+    theme_map() + small_map_tag_theme
+}
+pressure_source_qlprot <- make_pressure_source_map(
+  "qlprot_additional_pct", "qlProt_load", "a"
+)
+pressure_source_merged <- make_pressure_source_map(
+  "merged_additional_pct", "MergedComparison", "b"
+)
+pressure_source_difference <- ggplot() +
+  geom_sf(
+    data = protection_pressure_comparison_sf,
+    aes(fill = merged_minus_qlprot_pp), colour = NA
+  ) +
+  geom_sf(data = world_sf, fill = NA, colour = "grey30", linewidth = .12) +
+  scale_fill_gradient2(
+    low = "#2166AC", mid = "#F7F7F7", high = "#B2182B",
+    midpoint = 0,
+    limits = c(-comparison_difference_limit, comparison_difference_limit),
+    oob = squish, na.value = "grey94",
+    name = "MergedComparison − qlProt\n(percentage points)"
+  ) +
+  coord_world_no_antarctica() +
+  labs(title = "Difference", tag = "c") +
+  theme_map() + small_map_tag_theme
+pressure_source_comparison_figure <-
+  pressure_source_qlprot | pressure_source_merged | pressure_source_difference
+ggsave(
+  file.path(
+    supplementary_root,
+    "supplementary_figure_2_pressure_source_comparison.png"
+  ),
+  pressure_source_comparison_figure,
+  width = 10.8, height = 3.8, units = "in", dpi = 600,
+  bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(
+    supplementary_root,
+    "supplementary_figure_2_pressure_source_comparison.pdf"
+  ),
+  pressure_source_comparison_figure,
+  width = 10.8, height = 3.8, units = "in",
+  device = cairo_pdf, bg = "white", limitsize = FALSE
+)
 
 basin_protection_sf <- basin_boundaries %>%
   left_join(basin_protection, by = c("country", "basin"))
-pressure_values <- basin_protection$protection_increase_pp
+pressure_values <- basin_protection$protection_increase_pct
 pressure_values <- pressure_values[is.finite(pressure_values) & pressure_values > 0]
 pressure_limit <- unname(quantile(pressure_values, .98, na.rm = TRUE))
 
 p2a <- ggplot() +
   geom_sf(
-    data = basin_protection_sf, aes(fill = protection_increase_pp),
+    data = basin_protection_sf, aes(fill = protection_increase_pct),
     colour = NA
   ) +
   geom_sf(data = world_sf, fill = NA, colour = "grey30", linewidth = .12) +
   scale_fill_gradient(
     low = "#F2F0F7", high = "#54278F", limits = c(0, pressure_limit),
     oob = squish, na.value = "grey94",
-    name = "Mean increase\n(percentage points)"
+    name = "Additional protected area\n(% of total basin land)"
   ) +
   coord_world_no_antarctica() +
-  labs(title = "Added protected share by basin", tag = "a") +
+  labs(title = "Additional protected area by basin", tag = "a") +
   theme_map() + small_map_tag_theme
 
 pressure_raster <- rasterize(
   vect(basin_protection_sf), pixel_area,
-  field = "protection_increase_pp", background = NA, touches = TRUE
+  field = "protection_increase_pct", background = NA, touches = TRUE
 )
 pressure_raster_values <- values(pressure_raster, mat = FALSE)
 pressure_raster_values <- pressure_raster_values[
@@ -663,17 +1242,21 @@ stable_threshold_pp <- .1
 write_csv(
   tibble(
     classification = c(
-      "Added protected share: Low to Mid",
-      "Added protected share: Mid to High",
+      "Additional protected area: Low to Mid",
+      "Additional protected area: Mid to High",
       "Land-cover response: Decrease to Stable",
       "Land-cover response: Stable to Increase"
     ),
-    threshold_percentage_points = c(
+    threshold_value = c(
       pressure_breaks[[1]], pressure_breaks[[2]],
       -stable_threshold_pp, stable_threshold_pp
+    ),
+    unit = c(
+      "% of basin land", "% of basin land",
+      "percentage points", "percentage points"
     )
   ),
-  file.path(source_data_root, "figure_2_class_thresholds.csv")
+  file.path(source_data_root, "supplementary_figure_2_basin_class_thresholds.csv")
 )
 land_delta_111_011 <- (land_grids[["111"]] - land_grids[["011"]]) * 100
 
@@ -688,7 +1271,10 @@ make_bivariate_map <- function(class_id, title, tag) {
     mutate(code = factor(round(code), levels = 1:9))
   write_csv(
     map_data %>% transmute(x, y, class_code = as.integer(code)),
-    file.path(source_data_root, paste0("figure_2_", class_id, "_bivariate_grid.csv.gz"))
+    file.path(
+      source_data_root,
+      paste0("supplementary_figure_2_basin_", class_id, "_bivariate_grid.csv.gz")
+    )
   )
   ggplot(map_data, aes(x, y, fill = code)) +
     geom_tile(width = .5, height = .5) +
@@ -723,12 +1309,12 @@ p2legend <- ggplot(
   geom_tile(colour = "white", linewidth = .6) +
   scale_fill_manual(values = bivariate_colours, guide = "none") +
   scale_x_discrete(labels = c(
-    Low = paste0("Low\n≤", number(pressure_breaks[[1]], accuracy = .1)),
+    Low = paste0("Low\n≤", number(pressure_breaks[[1]], accuracy = .1), "%"),
     Medium = paste0(
       "Mid\n", number(pressure_breaks[[1]], accuracy = .1), "–",
-      number(pressure_breaks[[2]], accuracy = .1)
+      number(pressure_breaks[[2]], accuracy = .1), "%"
     ),
-    High = paste0("High\n>", number(pressure_breaks[[2]], accuracy = .1))
+    High = paste0("High\n>", number(pressure_breaks[[2]], accuracy = .1), "%")
   )) +
   scale_y_discrete(labels = c(
     Decrease = paste0("Decrease\n<−", number(stable_threshold_pp, accuracy = .1)),
@@ -738,7 +1324,7 @@ p2legend <- ggplot(
   )) +
   coord_fixed(ratio = .65) +
   labs(
-    x = "Added protected share (percentage points)",
+    x = "Additional protected area (% of total basin land)",
     y = "Land-cover change (percentage points)"
   ) +
   theme_pub(6.1) +
@@ -753,7 +1339,297 @@ p2legend <- ggplot(
 p2legend_lower <- plot_spacer() / p2legend +
   plot_layout(heights = c(.08, .92))
 p2_top <- (p2a | p2legend_lower) + plot_layout(widths = c(1.85, .65))
-figure_2 <- p2_top / (p2b | p2c) / (p2d | p2e) +
+basin_figure_2 <- p2_top / (p2b | p2c) / (p2d | p2e) +
+  plot_layout(heights = c(1, 1, 1))
+ggsave(
+  file.path(supplementary_root, "supplementary_figure_2_basin_protection.png"),
+  basin_figure_2, width = 7.2, height = 6.4, units = "in", dpi = 600,
+  bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_figure_2_basin_protection.pdf"),
+  basin_figure_2, width = 7.2, height = 6.4, units = "in",
+  device = cairo_pdf, bg = "white", limitsize = FALSE
+)
+
+# Supplementary: PLUM protection policy inputs and CDR yield inputs ---------
+#
+# Protection inputs are the 0.5-degree policy targets given to AIM/PLUM. In
+# the model, a cell with population density below 0.1 protects all existing
+# primary and secondary vegetation, and the target is further capped by the
+# previous land allocation. The maps show the pre-cap targets.
+input_dir <- file.path(data_dir, "InputData")
+read_grid_param <- function(gdx, symbol, value_name) {
+  x <- rgdx.param(gdx, symbol)
+  names(x)[1:2] <- c("G", value_name)
+  x %>%
+    transmute(
+      G = as.integer(as.character(G)),
+      !!value_name := as.numeric(.data[[value_name]])
+    )
+}
+policy_gdx <- file.path(input_dir, "policydata.gdx")
+plum_grid <- rgdx.set(file.path(input_dir, "data_prep.gdx"), "MAP_GIJ") %>%
+  transmute(
+    G = as.integer(as.character(G)),
+    I = as.integer(as.character(I)),
+    J = as.integer(as.character(J)),
+    lon = -180 + (J - .5) * .5,
+    lat = 90 - (I - .5) * .5
+  )
+plum_popdens <- rgdx.param(file.path(input_dir, "ssppopmap.gdx"), "popdens") %>%
+  filter(as.character(Y) == "2030", as.character(SSP) == "SSP2") %>%
+  transmute(G = as.integer(as.character(G)), popdens = as.numeric(popdens))
+# LandUseModel_MCP.gms uses afftype = ccur_vst, which selects ACFout("AFRCUR", G).
+plum_aff_yield <- rgdx.param(
+  file.path(input_dir, "visit_forest_growth_function.gdx"), "ACFout"
+) %>%
+  filter(as.character(LAFR) == "AFRCUR") %>%
+  transmute(G = as.integer(as.character(G)), aff_yield_mgc_ha_yr = as.numeric(ACFout))
+# YIELDBIO_H08 is the mean of rainfed Miscanthus and switchgrass yields, kg ha-1 to t ha-1.
+read_h08_yield <- function(symbol, value_name) {
+  rgdx.param(file.path(input_dir, "H08_yield_num_gdx.gdx"), symbol) %>%
+    transmute(
+      I = as.integer(as.character(i)), J = as.integer(as.character(j)),
+      !!value_name := as.numeric(value)
+    )
+}
+plum_bio_yield <- full_join(
+  read_h08_yield("yield_miscanthus_rainfed_num", "miscanthus"),
+  read_h08_yield("yield_swichgrass_rainfed_num", "switchgrass"),
+  by = c("I", "J")
+) %>%
+  mutate(
+    across(c(miscanthus, switchgrass), ~ coalesce(.x, 0)),
+    bio_yield_t_ha_yr = (miscanthus + switchgrass) / 2 / 1000
+  ) %>%
+  select(I, J, bio_yield_t_ha_yr)
+
+plum_inputs <- plum_grid %>%
+  left_join(read_grid_param(policy_gdx, "protect_bs", "protect_bs"), by = "G") %>%
+  left_join(read_grid_param(policy_gdx, "protect_all", "protect_all"), by = "G") %>%
+  left_join(
+    read_grid_param(policy_gdx, "serious_land_allpolicy", "serious_land_allpolicy"),
+    by = "G"
+  ) %>%
+  left_join(plum_popdens, by = "G") %>%
+  left_join(plum_aff_yield, by = "G") %>%
+  left_join(plum_bio_yield, by = c("I", "J")) %>%
+  mutate(
+    across(
+      c(protect_bs, protect_all, serious_land_allpolicy, popdens,
+        aff_yield_mgc_ha_yr, bio_yield_t_ha_yr),
+      ~ coalesce(.x, 0)
+    ),
+    target_bau = if_else(popdens < .1, 1, pmin(1, protect_bs)),
+    target_protect = if_else(
+      popdens < .1, 1, pmin(1, protect_all + serious_land_allpolicy)
+    ),
+    additional_target = pmax(0, target_protect - target_bau)
+  )
+write_csv(
+  plum_inputs,
+  file.path(source_data_root, "supplementary_plum_protection_inputs_grid.csv.gz")
+)
+# MAP_GIJ rows and columns coincide with the AIM-LU NetCDF grid.
+protection_raster <- function(share) {
+  layer <- rast(pixel_area)
+  values(layer) <- NA_real_
+  layer[cellFromRowCol(layer, plum_inputs$I, plum_inputs$J)] <- share
+  layer
+}
+
+save_input_grid_map <- function(variable, stem, legend, palette, limits, labels) {
+  plot <- ggplot() +
+    geom_tile(
+      data = plum_inputs, aes(lon, lat, fill = .data[[variable]]),
+      width = .5, height = .5
+    ) +
+    geom_sf(
+      data = world_sf, fill = NA, colour = "grey30", linewidth = .12,
+      inherit.aes = FALSE
+    ) +
+    scale_fill_gradientn(
+      colours = palette, limits = limits, oob = squish, labels = labels,
+      name = legend
+    ) +
+    coord_world_no_antarctica() +
+    theme_map() +
+    theme(
+      legend.text = element_text(size = 7),
+      legend.title = element_text(size = 7.5),
+      legend.key.width = unit(9, "mm")
+    )
+  ggsave(
+    file.path(supplementary_root, paste0(stem, ".png")), plot,
+    width = 7.2, height = 3.5, units = "in", dpi = 600,
+    bg = "white", limitsize = FALSE
+  )
+  ggsave(
+    file.path(supplementary_root, paste0(stem, ".pdf")), plot,
+    width = 7.2, height = 3.5, units = "in",
+    device = cairo_pdf, bg = "white", limitsize = FALSE
+  )
+}
+share_labels <- label_percent(accuracy = 1)
+save_input_grid_map(
+  "target_protect", "supplementary_plum_protect_target",
+  "Protected share of cell, PROT",
+  c("#F7FCF5", "#006D2C"), c(0, 1), share_labels
+)
+save_input_grid_map(
+  "additional_target", "supplementary_plum_protect_additional",
+  "Additional protected share, PROT − BAU",
+  c("#FFF5EB", "#A63603"), c(0, 1), share_labels
+)
+save_input_grid_map(
+  "protect_all", "supplementary_plum_protect_all", "protect_all",
+  c("#F7FCF5", "#238B45"), c(0, 1), share_labels
+)
+save_input_grid_map(
+  "serious_land_allpolicy", "supplementary_plum_serious_land_allpolicy",
+  "serious_land_allpolicy",
+  c("#FFF7EC", "#D95F0E"), c(0, 1), share_labels
+)
+save_input_grid_map(
+  "aff_yield_mgc_ha_yr", "supplementary_plum_afforestation_yield",
+  "Afforestation carbon uptake (Mg C ha⁻¹ yr⁻¹)",
+  c("#FFFFCC", "#238443"),
+  c(0, max(plum_inputs$aff_yield_mgc_ha_yr)), label_number(accuracy = .1)
+)
+save_input_grid_map(
+  "bio_yield_t_ha_yr", "supplementary_plum_bioenergy_yield",
+  "Bioenergy crop yield (t ha⁻¹ yr⁻¹)",
+  c("#FFF7BC", "#D95F0E", "#7F2704"),
+  c(0, max(plum_inputs$bio_yield_t_ha_yr)), label_number(accuracy = 1)
+)
+
+# Figure 2: grid-level protection pressure and land response ----------------
+#
+# Same construction as the basin version above, with the protection pressure
+# taken from the 0.5-degree additional protected share in the PLUM policy
+# inputs and fixed class boundaries at 10% and 30% of cell land.
+grid_pressure_raster <- protection_raster(100 * plum_inputs$additional_target)
+grid_pressure_values <- values(grid_pressure_raster, mat = FALSE)
+grid_pressure_values <- grid_pressure_values[
+  is.finite(grid_pressure_values) & grid_pressure_values > 0
+]
+grid_pressure_limit <- unname(quantile(grid_pressure_values, .98, na.rm = TRUE))
+grid_pressure_breaks <- c(10, 30)
+grid_pressure_class <- ifel(
+  grid_pressure_raster <= grid_pressure_breaks[[1]], 1,
+  ifel(grid_pressure_raster <= grid_pressure_breaks[[2]], 2, 3)
+)
+write_csv(
+  tibble(
+    classification = c(
+      "Additional protected area: Low to Mid",
+      "Additional protected area: Mid to High",
+      "Land-cover response: Decrease to Stable",
+      "Land-cover response: Stable to Increase"
+    ),
+    threshold_value = c(
+      grid_pressure_breaks[[1]], grid_pressure_breaks[[2]],
+      -stable_threshold_pp, stable_threshold_pp
+    ),
+    unit = c(
+      "% of cell land", "% of cell land",
+      "percentage points", "percentage points"
+    )
+  ),
+  file.path(source_data_root, "figure_2_class_thresholds.csv")
+)
+
+grid_p2a_data <- to_map_data(grid_pressure_raster, "additional_protected_pct")
+write_csv(
+  grid_p2a_data,
+  file.path(source_data_root, "figure_2_grid_protection_pressure.csv.gz")
+)
+grid_p2a <- ggplot(grid_p2a_data, aes(x, y, fill = additional_protected_pct)) +
+  geom_tile(width = .5, height = .5) +
+  geom_sf(
+    data = world_sf, fill = NA, colour = "grey30", linewidth = .12,
+    inherit.aes = FALSE
+  ) +
+  scale_fill_gradient(
+    low = "#F2F0F7", high = "#54278F", limits = c(0, grid_pressure_limit),
+    oob = squish, na.value = "grey94",
+    name = "Additional protected area\n(% of cell land)"
+  ) +
+  coord_world_no_antarctica() +
+  labs(title = "Additional protected area", tag = "a") +
+  theme_map() + small_map_tag_theme
+
+make_grid_bivariate_map <- function(class_id, title, tag) {
+  delta_pp <- mask(land_delta_111_011[[class_id]], land_mask)
+  response_class <- ifel(
+    delta_pp < -stable_threshold_pp, 1,
+    ifel(delta_pp > stable_threshold_pp, 3, 2)
+  )
+  code_layer <- mask(grid_pressure_class + 3 * (response_class - 1), land_mask)
+  map_data <- to_map_data(code_layer, "code") %>%
+    mutate(code = factor(round(code), levels = 1:9))
+  write_csv(
+    map_data %>% transmute(x, y, class_code = as.integer(code)),
+    file.path(
+      source_data_root,
+      paste0("figure_2_", class_id, "_bivariate_grid.csv.gz")
+    )
+  )
+  ggplot(map_data, aes(x, y, fill = code)) +
+    geom_tile(width = .5, height = .5) +
+    geom_sf(
+      data = world_sf, fill = NA, colour = "grey30", linewidth = .12,
+      inherit.aes = FALSE
+    ) +
+    scale_fill_manual(values = bivariate_colours, guide = "none", na.value = "grey94") +
+    coord_world_no_antarctica() +
+    labs(title = title, tag = tag) +
+    theme_map() + small_map_tag_theme
+}
+
+grid_p2b <- make_grid_bivariate_map("planted_forest", "Planted forest", "b")
+grid_p2c <- make_grid_bivariate_map("bio", "Bioenergy cropland", NULL)
+grid_p2d <- make_grid_bivariate_map("food", "Cropland", NULL)
+grid_p2e <- make_grid_bivariate_map("natural_land", "Natural land", NULL)
+
+grid_p2legend <- ggplot(
+  bivariate_legend_data, aes(pressure, response, fill = code)
+) +
+  geom_tile(colour = "white", linewidth = .6) +
+  scale_fill_manual(values = bivariate_colours, guide = "none") +
+  scale_x_discrete(labels = c(
+    Low = paste0("Low\n≤", number(grid_pressure_breaks[[1]], accuracy = 1), "%"),
+    Medium = paste0(
+      "Mid\n", number(grid_pressure_breaks[[1]], accuracy = 1), "–",
+      number(grid_pressure_breaks[[2]], accuracy = 1), "%"
+    ),
+    High = paste0("High\n>", number(grid_pressure_breaks[[2]], accuracy = 1), "%")
+  )) +
+  scale_y_discrete(labels = c(
+    Decrease = paste0("Decrease\n<−", number(stable_threshold_pp, accuracy = .1)),
+    Stable = paste0("Stable\n−", number(stable_threshold_pp, accuracy = .1),
+                    " to +", number(stable_threshold_pp, accuracy = .1)),
+    Increase = paste0("Increase\n>", number(stable_threshold_pp, accuracy = .1))
+  )) +
+  coord_fixed(ratio = .65) +
+  labs(
+    x = "Additional protected area (% of cell land)",
+    y = "Land-cover change (percentage points)"
+  ) +
+  theme_pub(6.1) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 5.4, lineheight = .9),
+    axis.text.y = element_text(size = 5.4, lineheight = .9),
+    axis.title = element_text(size = 5.8),
+    plot.margin = margin(2, 4, 2, 4)
+  )
+
+grid_p2legend_lower <- plot_spacer() / grid_p2legend +
+  plot_layout(heights = c(.18, .82))
+grid_p2_top <- (grid_p2a | grid_p2legend_lower) + plot_layout(widths = c(1.75, .75))
+figure_2 <- grid_p2_top / (grid_p2b | grid_p2c) / (grid_p2d | grid_p2e) +
   plot_layout(heights = c(1, 1, 1))
 save_figure(figure_2, 2, width = 7.2, height = 6.4)
 
@@ -1114,39 +1990,331 @@ p3_main_legend <- ggplot(
   theme_pub(5.3) +
   theme(
     panel.grid = element_blank(), axis.title.x = element_text(face = "bold", size = 5.4),
-    axis.text = element_text(size = 4.9),
+    axis.text.x = element_text(size = 4.9),
+    axis.text.y = element_text(size = 5.8),
     plot.margin = margin(0, 4, 0, 4)
   )
 
-main_food_net <- sum(main_food_summary$signed_area_mha)
-p3_main_b <- ggplot(
-  main_food_summary,
-  aes(x = factor("MITI_PROT − MITI"), y = signed_area_mha,
-      fill = factor(signal, levels = names(main_food_signals)))
+# Figure 3b-c: grid-level land transitions between MITI and MITI_PROT.
+#
+# ============================================================================
+# TEMPORARY WORKAROUND FOR EXISTING NETCDF FILES ONLY
+# Besides the global factor of two above, the class shares of some cells in the
+# current AIM-LUmap files sum to more than one, and the per-cell totals differ
+# between scenario files.  Each cell's class composition is therefore rescaled
+# to a common land fraction, min(total_011, total_111, 1), before transitions
+# are tracked.  REMOVE this rescaling after the NetCDF files are regenerated.
+# ============================================================================
+sankey_class_index <- c(
+  cropland = 1L, bioenergy = 2L, pasture = 3L, natural_forest = 4L,
+  planted_forest = 5L, restored_cropland = 6L, restored_pasture = 7L,
+  abandoned_planted_forest = 8L, other_natural = 9L
+)
+sankey_nodes <- c(
+  cropland = "Cropland", bioenergy = "Bioenergy cropland",
+  planted_forest = "Planted forest", pasture = "Pasture",
+  restored = "Restored / abandoned land", natural_forest = "Natural forest",
+  other_natural = "Other natural land", protected = "Protected natural land"
+)
+sankey_colours <- c(
+  cropland = "#D9A400", bioenergy = "#D95F02", planted_forest = "#1B9E77",
+  pasture = "#80B1D3", restored = "#BDB76B", natural_forest = "#006D2C",
+  other_natural = "#A1D99B", protected = "#8C8C8C"
+)
+protectable_nodes <- c("natural_forest", "other_natural", "restored")
+
+read_sankey_grid <- function(state) {
+  path <- file.path(
+    data_dir, "PLUM", "nc", paste0("AIM-LUmap_", states[[state]], ".nc")
+  )
+  all_layers <- rast(path, subds = "LC_area_share")
+  positions <- (unname(sankey_class_index) - 1L) * length(grid_years) +
+    match(target_year, grid_years)
+  selected <- all_layers[[positions]] / grid_export_duplicate_factor
+  names(selected) <- names(sankey_class_index)
+  selected
+}
+sankey_stack <- c(
+  read_sankey_grid("011"), read_sankey_grid("111"), pixel_area,
+  protection_raster(plum_inputs$target_bau),
+  protection_raster(pmax(plum_inputs$target_bau, plum_inputs$target_protect))
+)
+sankey_cells <- as.data.frame(sankey_stack, na.rm = FALSE)
+class_count <- length(sankey_class_index)
+shares_011 <- as.matrix(sankey_cells[, seq_len(class_count)])
+shares_111 <- as.matrix(sankey_cells[, class_count + seq_len(class_count)])
+shares_011[!is.finite(shares_011)] <- 0
+shares_111[!is.finite(shares_111)] <- 0
+cell_area <- sankey_cells[[2L * class_count + 1L]]
+protect_011 <- replace_na(sankey_cells[[2L * class_count + 2L]], 0)
+protect_111 <- replace_na(sankey_cells[[2L * class_count + 3L]], 0)
+# Land fraction per cell is the smaller class total of the two scenarios,
+# and each scenario's class composition is rescaled to that fraction.
+land_fraction <- pmin(rowSums(shares_011), rowSums(shares_111), 1)
+land_cells <- is.finite(cell_area) & land_fraction > 0
+to_node_area <- function(shares, protect_share) {
+  shares <- shares[land_cells, ]
+  land_mha <- land_fraction[land_cells] * cell_area[land_cells]
+  area <- shares / rowSums(shares) * land_mha
+  nodes <- cbind(
+    area[, c("cropland", "bioenergy", "planted_forest", "pasture")],
+    restored = area[, "restored_cropland"] + area[, "restored_pasture"] +
+      area[, "abandoned_planted_forest"],
+    area[, c("natural_forest", "other_natural")]
+  )
+  protectable_total <- rowSums(nodes[, protectable_nodes])
+  protected_mha <- pmin(protect_share[land_cells] * land_mha, protectable_total)
+  protected_share <- if_else(protectable_total > 0, protected_mha / protectable_total, 0)
+  nodes[, protectable_nodes] <- nodes[, protectable_nodes] * (1 - protected_share)
+  cbind(nodes, protected = protected_mha)
+}
+node_area_011 <- to_node_area(shares_011, protect_011)
+node_area_111 <- to_node_area(shares_111, protect_111)
+if (max(abs(rowSums(node_area_011) - rowSums(node_area_111))) > 1e-6) {
+  stop("Grid land totals do not close between MITI and MITI_PROT.")
+}
+# Within each cell, every decreasing node is matched to the increasing nodes
+# in proportion to their gains.
+node_loss <- pmax(node_area_011 - node_area_111, 0)
+node_gain <- pmax(node_area_111 - node_area_011, 0)
+gain_total <- rowSums(node_gain)
+gain_weight <- if_else(gain_total > 0, 1 / gain_total, 0)
+transition_matrix <- t(node_loss) %*% (node_gain * gain_weight)
+persistent_mha <- colSums(pmin(node_area_011, node_area_111))
+sankey_flows <- as.data.frame(transition_matrix) %>%
+  mutate(from = rownames(transition_matrix)) %>%
+  pivot_longer(-from, names_to = "to", values_to = "area_mha") %>%
+  filter(from != to, area_mha > 0) %>%
+  mutate(
+    # Protectable land that only changes protection status keeps its class.
+    flow_type = if_else(
+      (from %in% protectable_nodes & to == "protected") |
+        (from == "protected" & to %in% protectable_nodes),
+      "protection status only", "land-use change"
+    )
+  )
+sankey_totals <- tibble(
+  node = names(sankey_nodes),
+  area_011_mha = colSums(node_area_011)[names(sankey_nodes)],
+  area_111_mha = colSums(node_area_111)[names(sankey_nodes)],
+  persistent_mha = persistent_mha[names(sankey_nodes)]
+) %>%
+  mutate(
+    outflow_mha = area_011_mha - persistent_mha,
+    inflow_mha = area_111_mha - persistent_mha,
+    net_change_mha = area_111_mha - area_011_mha
+  )
+write_csv(sankey_flows, file.path(source_data_root, "figure_3c_grid_transitions.csv"))
+write_csv(sankey_totals, file.path(source_data_root, "figure_3b_grid_land_totals.csv"))
+
+sankey_drawn <- sankey_flows %>%
+  filter(flow_type == "land-use change") %>%
+  mutate(flow_id = row_number())
+sankey_lodes <- sankey_drawn %>%
+  pivot_longer(c(from, to), names_to = "axis", values_to = "node") %>%
+  mutate(
+    axis = factor(axis, levels = c("from", "to")),
+    node = factor(node, levels = names(sankey_nodes)),
+    from = factor(sankey_drawn$from[flow_id], levels = names(sankey_nodes))
+  )
+sankey_axis_totals <- bind_rows(
+  sankey_drawn %>% group_by(node = from) %>%
+    summarise(area_mha = sum(area_mha), .groups = "drop") %>% mutate(axis = 1L),
+  sankey_drawn %>% group_by(node = to) %>%
+    summarise(area_mha = sum(area_mha), .groups = "drop") %>% mutate(axis = 2L)
+)
+sankey_axis_label <- function(axis, node) {
+  key <- paste(axis, node)
+  lookup <- sankey_axis_totals %>%
+    mutate(
+      key = paste(axis, node),
+      label = sprintf("%s (%s)", sankey_nodes[node], number(area_mha, accuracy = 1))
+    )
+  unname(lookup$label[match(key, lookup$key)])
+}
+p3_main_sankey <- ggplot(
+  sankey_lodes,
+  aes(x = axis, stratum = node, alluvium = flow_id, y = area_mha)
 ) +
-  geom_hline(yintercept = 0, colour = "grey35", linewidth = .3) +
-  geom_col(width = .54) +
-  geom_point(
-    data = tibble(comparison = factor("MITI_PROT − MITI"), net_change_mha = main_food_net),
-    aes(comparison, net_change_mha), inherit.aes = FALSE,
-    shape = 18, size = 2.1
+  ggalluvial::geom_flow(
+    aes(fill = from), width = .14, alpha = .72, knot.pos = .38
   ) +
-  scale_fill_manual(values = main_food_colours, guide = "none") +
-  scale_y_continuous(labels = label_number(accuracy = 1)) +
-  labs(tag = "b", x = NULL, y = "Cropland change (million ha)") +
+  ggalluvial::geom_stratum(
+    aes(fill = node), width = .14, colour = "white", linewidth = .3
+  ) +
+  geom_text_repel(
+    data = sankey_lodes %>% filter(axis == "from"),
+    stat = ggalluvial::StatStratum,
+    aes(label = after_stat(sankey_axis_label(1L, as.character(stratum)))),
+    direction = "y", hjust = 1, nudge_x = -.1, xlim = c(NA, 1.9),
+    size = 2.1, segment.size = .2, segment.colour = "grey50",
+    box.padding = .08, min.segment.length = .2
+  ) +
+  geom_text_repel(
+    data = sankey_lodes %>% filter(axis == "to"),
+    stat = ggalluvial::StatStratum,
+    aes(label = after_stat(sankey_axis_label(2L, as.character(stratum)))),
+    direction = "y", hjust = 0, nudge_x = .1, xlim = c(2.1, NA),
+    size = 2.1, segment.size = .2, segment.colour = "grey50",
+    box.padding = .08, min.segment.length = .2
+  ) +
+  scale_fill_manual(values = sankey_colours, guide = "none") +
+  scale_x_discrete(
+    labels = c(from = "MITI", to = "MITI_PROT"),
+    expand = expansion(mult = c(.9, .9))
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(.01, .04))) +
+  coord_cartesian(clip = "off") +
+  labs(tag = "c", x = NULL, y = "Land changing use (million ha)") +
   theme_pub(7.8) + small_map_tag_theme +
   theme(
-    panel.grid.major.x = element_blank(),
-    axis.text.x = element_text(size = 5.7)
+    panel.grid.major.y = element_blank(), axis.line = element_blank(),
+    axis.ticks = element_blank(), axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(size = 7, face = "bold")
   )
+
+sankey_stack_data <- sankey_totals %>%
+  select(node, MITI = area_011_mha, MITI_PROT = area_111_mha) %>%
+  pivot_longer(-node, names_to = "scenario", values_to = "area_mha") %>%
+  mutate(
+    node = factor(node, levels = rev(names(sankey_nodes))),
+    scenario = factor(scenario, levels = c("MITI", "MITI_PROT"))
+  )
+p3_main_totals <- ggplot(sankey_stack_data, aes(scenario, area_mha, fill = node)) +
+  geom_col(width = .62, colour = "white", linewidth = .2) +
+  scale_fill_manual(
+    values = sankey_colours, labels = sankey_nodes, name = NULL,
+    breaks = names(sankey_nodes)
+  ) +
+  scale_y_continuous(
+    labels = label_number(big.mark = ","), expand = expansion(mult = c(0, .03))
+  ) +
+  labs(tag = "b", x = NULL, y = "Land area (million ha)") +
+  theme_pub(7.8) + small_map_tag_theme +
+  theme(
+    legend.position = "bottom", legend.text = element_text(size = 5.6),
+    legend.key.height = unit(2.4, "mm"), legend.key.width = unit(2.8, "mm"),
+    legend.key.spacing.y = unit(0, "mm"), legend.margin = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(1.5, "mm"),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(size = 7, face = "bold")
+  ) +
+  guides(fill = guide_legend(ncol = 2, byrow = TRUE))
+
+# Supplementary: full land-use Sankey including persistent land ------------
+#
+# Node heights equal the total area of each node, as in panel c. Persistent
+# land and protection-status-only flows are drawn in light colours.
+sankey_full <- as.data.frame(transition_matrix) %>%
+  mutate(from = rownames(transition_matrix)) %>%
+  pivot_longer(-from, names_to = "to", values_to = "area_mha") %>%
+  filter(from != to) %>%
+  bind_rows(
+    tibble(from = names(persistent_mha), to = names(persistent_mha),
+           area_mha = unname(persistent_mha))
+  ) %>%
+  filter(area_mha > 0) %>%
+  mutate(
+    flow_type = case_when(
+      from == to ~ "persistent",
+      (from %in% protectable_nodes & to == "protected") |
+        (from == "protected" & to %in% protectable_nodes) ~
+        "protection status only",
+      TRUE ~ "land-use change"
+    ),
+    flow_id = row_number()
+  )
+sankey_full_lodes <- sankey_full %>%
+  pivot_longer(c(from, to), names_to = "axis", values_to = "node") %>%
+  mutate(
+    axis = factor(axis, levels = c("from", "to")),
+    node = factor(node, levels = names(sankey_nodes)),
+    from = factor(sankey_full$from[flow_id], levels = names(sankey_nodes)),
+    flow_alpha = c(
+      persistent = .22, `protection status only` = .35, `land-use change` = .85
+    )[flow_type]
+  )
+sankey_full_totals <- bind_rows(
+  sankey_totals %>% transmute(node, axis = 1L, area_mha = area_011_mha),
+  sankey_totals %>% transmute(node, axis = 2L, area_mha = area_111_mha)
+)
+sankey_full_label <- function(axis, node) {
+  key <- paste(axis, node)
+  lookup <- sankey_full_totals %>%
+    mutate(
+      key = paste(axis, node),
+      label = sprintf(
+        "%s (%s)", sankey_nodes[node], number(area_mha, accuracy = 1, big.mark = ",")
+      )
+    )
+  unname(lookup$label[match(key, lookup$key)])
+}
+supp_full_sankey <- ggplot(
+  sankey_full_lodes,
+  aes(x = axis, stratum = node, alluvium = flow_id, y = area_mha)
+) +
+  ggalluvial::geom_flow(
+    aes(fill = from, alpha = flow_alpha), width = .14, knot.pos = .38
+  ) +
+  ggalluvial::geom_stratum(
+    aes(fill = node), width = .14, colour = "white", linewidth = .3
+  ) +
+  geom_text_repel(
+    data = sankey_full_lodes %>% filter(axis == "from"),
+    stat = ggalluvial::StatStratum,
+    aes(label = after_stat(sankey_full_label(1L, as.character(stratum)))),
+    direction = "y", hjust = 1, nudge_x = -.1, xlim = c(NA, 1.9),
+    size = 2.1, segment.size = .2, segment.colour = "grey50",
+    box.padding = .08, min.segment.length = .2
+  ) +
+  geom_text_repel(
+    data = sankey_full_lodes %>% filter(axis == "to"),
+    stat = ggalluvial::StatStratum,
+    aes(label = after_stat(sankey_full_label(2L, as.character(stratum)))),
+    direction = "y", hjust = 0, nudge_x = .1, xlim = c(2.1, NA),
+    size = 2.1, segment.size = .2, segment.colour = "grey50",
+    box.padding = .08, min.segment.length = .2
+  ) +
+  scale_fill_manual(values = sankey_colours, guide = "none") +
+  scale_alpha_identity() +
+  scale_x_discrete(
+    labels = c(from = "MITI", to = "MITI_PROT"),
+    expand = expansion(mult = c(.9, .9))
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(.01, .04))) +
+  coord_cartesian(clip = "off") +
+  labs(x = NULL, y = NULL) +
+  theme_pub(7.8) +
+  theme(
+    panel.grid.major.y = element_blank(), axis.line = element_blank(),
+    axis.ticks = element_blank(), axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 7, face = "bold")
+  )
+write_csv(
+  sankey_full %>% select(-flow_id),
+  file.path(source_data_root, "supplementary_full_land_sankey.csv")
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_full_land_sankey.png"),
+  supp_full_sankey, width = 5.0, height = 7.2, units = "in", dpi = 600,
+  bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(supplementary_root, "supplementary_full_land_sankey.pdf"),
+  supp_full_sankey, width = 5.0, height = 7.2, units = "in",
+  device = cairo_pdf, bg = "white", limitsize = FALSE
+)
 
 p3_main_legend_compact <- (plot_spacer() | p3_main_legend | plot_spacer()) +
   plot_layout(widths = c(.20, .60, .20))
-p3_main_left <- p3_main_a / p3_main_legend_compact +
+p3_main_top <- p3_main_a / p3_main_legend_compact +
   plot_layout(heights = c(1.95, .45))
-figure_3 <- (p3_main_left | p3_main_b) +
-  plot_layout(widths = c(4.55, .85))
-save_figure(figure_3, 3, width = 7.2, height = 4.0)
+p3_main_bottom <- (p3_main_totals | p3_main_sankey) + plot_layout(widths = c(1, 2.2))
+figure_3 <- wrap_plots(
+  p3_main_top, p3_main_bottom, ncol = 1, heights = c(1.05, 1)
+)
+save_figure(figure_3, 3, width = 7.2, height = 8.6)
 
 # AgMIP market data used in Figures 4 and 5 -------------------------------
 
@@ -1449,8 +2617,8 @@ p4d <- ggplot(
 
 p4_bottom <- (p4c | p4d) + plot_layout(widths = c(.9, 1.1))
 figure_4 <- (p4a | p4b) / p4_bottom +
-  plot_layout(heights = c(1.06, .94))
-save_figure(figure_4, 4, width = 7.2, height = 6.2)
+  plot_layout(heights = c(.8, 1))
+save_figure(figure_4, 4, width = 7.2, height = 5.5)
 
 # Figure 5: agricultural-market effects and policy contributions -----------
 
@@ -1652,37 +2820,45 @@ p5_main_a <- ggplot(
     legend.position = "bottom", panel.grid.major.x = element_blank()
   )
 
-plot_r10_direct <- function(indicator_name, title, tag) {
-  data <- market_direct %>%
-    filter(region %in% names(r10_labels), indicator == indicator_name) %>%
-    mutate(region_label = factor(
+r10_direct_long <- market_direct %>%
+  filter(
+    region %in% names(r10_labels),
+    indicator %in% c("Production", "Producer price", "Food intake")
+  ) %>%
+  mutate(
+    region_label = factor(
       unname(r10_labels[region]), levels = rev(unname(r10_labels))
-    ))
-  long <- data %>%
-    select(region_label, miti_pct, miti_prot_pct) %>%
-    pivot_longer(-region_label, names_to = "scenario", values_to = "change_pct") %>%
-    mutate(scenario = factor(
-      recode(scenario, miti_pct = "MITI", miti_prot_pct = "MITI_PROT"),
-      levels = c("MITI", "MITI_PROT")
-    ))
-  ggplot(long, aes(region_label, change_pct, fill = scenario)) +
-    geom_hline(yintercept = 0, colour = "grey35", linewidth = .3) +
-    geom_col(position = position_dodge(width = .72), width = .64) +
-    coord_flip() +
-    scale_fill_manual(values = main_scenario_colours, name = NULL) +
-    scale_y_continuous(labels = label_number(accuracy = .1)) +
-    labs(title = title, tag = tag, x = NULL, y = "Change from BAU (%)") +
-    theme_pub(7.8) + tag_theme +
-    theme(legend.position = "none", panel.grid.major.y = element_blank())
-}
+    ),
+    indicator = factor(
+      indicator, levels = c("Production", "Producer price", "Food intake")
+    )
+  ) %>%
+  select(region_label, indicator, miti_pct, miti_prot_pct) %>%
+  pivot_longer(
+    c(miti_pct, miti_prot_pct), names_to = "scenario", values_to = "change_pct"
+  ) %>%
+  mutate(scenario = factor(
+    recode(scenario, miti_pct = "MITI", miti_prot_pct = "MITI_PROT"),
+    levels = c("MITI", "MITI_PROT")
+  ))
 
-p5_main_c <- plot_r10_direct("Production", "Production", "b")
-p5_main_d <- plot_r10_direct("Producer price", "Producer price", "c")
-p5_main_e <- plot_r10_direct("Food intake", "Food intake", "d")
+p5_main_b <- ggplot(r10_direct_long, aes(region_label, change_pct, fill = scenario)) +
+  geom_hline(yintercept = 0, colour = "grey35", linewidth = .3) +
+  geom_col(position = position_dodge(width = .72), width = .64) +
+  coord_flip() +
+  facet_wrap(vars(indicator), nrow = 1, scales = "free_x") +
+  scale_fill_manual(values = main_scenario_colours, name = NULL) +
+  scale_y_continuous(labels = label_number(accuracy = .1)) +
+  labs(tag = "b", x = NULL, y = "Change from BAU (%)") +
+  theme_pub(7.8) + tag_theme +
+  theme(
+    legend.position = "none", panel.grid.major.y = element_blank(),
+    panel.spacing.x = unit(4, "mm")
+  )
 
-figure_5 <- p5_main_a / p5_main_c / p5_main_d / p5_main_e +
-  plot_layout(heights = c(.8, 1, 1, 1))
-save_figure(figure_5, 5, width = 7.2, height = 8.8)
+figure_5 <- p5_main_a / p5_main_b +
+  plot_layout(heights = c(.8, 1))
+save_figure(figure_5, 5, width = 7.2, height = 5.6)
 
 # Figure 6: basin land pressure and crop-production relocation ------------
 
@@ -1693,18 +2869,21 @@ calorie_coefficients <- read_csv(
   file.path(data_dir, "ALPHA", "calCoef.csv"), show_col_types = FALSE
 )
 
-basin_production_raw <- rgdx.param(alpha_file, "qsBas_load") %>%
-  filter(
-    SCENARIO %in% states[c("011", "111")],
-    as.integer(as.character(Y)) == target_year,
-    c %in% food_crop_codes
-  ) %>%
-  transmute(
-    state = state_from_scenario(SCENARIO), commodity = as.character(c),
-    basin = as.character(bas), country = as.character(cty),
-    production_1000t = as.numeric(qsBas_load)
-  ) %>%
-  left_join(calorie_coefficients, by = c("commodity", "country"))
+read_basin_production_raw <- function(year = target_year) {
+  rgdx.param(alpha_file, "qsBas_load") %>%
+    filter(
+      SCENARIO %in% states[c("011", "111")],
+      as.integer(as.character(Y)) == year,
+      c %in% food_crop_codes
+    ) %>%
+    transmute(
+      state = state_from_scenario(SCENARIO), commodity = as.character(c),
+      basin = as.character(bas), country = as.character(cty),
+      production_1000t = as.numeric(qsBas_load)
+    ) %>%
+    left_join(calorie_coefficients, by = c("commodity", "country"))
+}
+basin_production_raw <- read_basin_production_raw()
 
 figure6_calorie_coverage <- basin_production_raw %>%
   group_by(state) %>%
@@ -1722,22 +2901,25 @@ write_csv(
   file.path(source_data_root, "figure_6_calorie_coefficient_coverage.csv")
 )
 
-basin_production <- basin_production_raw %>%
-  filter(is.finite(million_kcal_per_1000t)) %>%
-  group_by(state, basin, country) %>%
-  summarise(
-    crop_production_pj = sum(
-      production_1000t * million_kcal_per_1000t * 4.184e-6,
-      na.rm = TRUE
-    ),
-    .groups = "drop"
-  )
+basin_calorie_production <- function(production_raw) {
+  production_raw %>%
+    filter(is.finite(million_kcal_per_1000t)) %>%
+    group_by(state, basin, country) %>%
+    summarise(
+      crop_production_pj = sum(
+        production_1000t * million_kcal_per_1000t * 4.184e-6,
+        na.rm = TRUE
+      ),
+      .groups = "drop"
+    )
+}
 
-read_basin_area <- function(symbol, value_column, commodities = NULL) {
+read_basin_area <- function(symbol, value_column, commodities = NULL,
+                            year = target_year) {
   data <- rgdx.param(alpha_file, symbol) %>%
     filter(
       SCENARIO %in% states[c("011", "111")],
-      as.integer(as.character(Y)) == target_year
+      as.integer(as.character(Y)) == year
     )
   if (!is.null(commodities)) {
     data <- data %>% filter(c %in% commodities)
@@ -1751,81 +2933,85 @@ read_basin_area <- function(symbol, value_column, commodities = NULL) {
     summarise(value = sum(value, na.rm = TRUE), .groups = "drop")
 }
 
-basin_total <- read_basin_area("qlTot_load", "qlTot_load") %>%
-  rename(total_land_1000ha = value)
-basin_protected <- rgdx.param(alpha_file, "qlProt_load") %>%
-  filter(
-    SCENARIO %in% states[c("011", "111")],
-    as.integer(as.character(Y)) == target_year
+build_basin_metrics <- function(year = target_year,
+                                production_raw = read_basin_production_raw(year)) {
+  basin_total <- read_basin_area("qlTot_load", "qlTot_load", year = year) %>%
+    rename(total_land_1000ha = value)
+  basin_protected <- rgdx.param(alpha_file, "qlProt_load") %>%
+    filter(
+      SCENARIO %in% states[c("011", "111")],
+      as.integer(as.character(Y)) == year
+    ) %>%
+    transmute(
+      state = state_from_scenario(SCENARIO), basin = as.character(bas),
+      country = as.character(cty), value = as.numeric(qlProt_load)
+    ) %>%
+    group_by(state, basin, country) %>%
+    summarise(protected_1000ha = sum(value, na.rm = TRUE), .groups = "drop")
+  basin_planted <- read_basin_area("qlAfr_load", "qlAfr_load", year = year) %>%
+    rename(planted_forest_1000ha = value)
+  basin_bioenergy <- read_basin_area("qlBas_load", "qlBas_load", "ecr", year = year) %>%
+    rename(bioenergy_1000ha = value)
+  basin_food_area <- read_basin_area(
+    "qlBas_load", "qlBas_load", food_crop_codes, year = year
   ) %>%
-  transmute(
-    state = state_from_scenario(SCENARIO), basin = as.character(bas),
-    country = as.character(cty), value = as.numeric(qlProt_load)
-  ) %>%
-  group_by(state, basin, country) %>%
-  summarise(protected_1000ha = sum(value, na.rm = TRUE), .groups = "drop")
-basin_planted <- read_basin_area("qlAfr_load", "qlAfr_load") %>%
-  rename(planted_forest_1000ha = value)
-basin_bioenergy <- read_basin_area("qlBas_load", "qlBas_load", "ecr") %>%
-  rename(bioenergy_1000ha = value)
-basin_food_area <- read_basin_area(
-  "qlBas_load", "qlBas_load", food_crop_codes
-) %>%
-  rename(food_harvested_area_1000ha = value)
+    rename(food_harvested_area_1000ha = value)
 
-basin_state_data <- basin_total %>%
-  left_join(basin_protected, by = c("state", "basin", "country")) %>%
-  left_join(basin_planted, by = c("state", "basin", "country")) %>%
-  left_join(basin_bioenergy, by = c("state", "basin", "country")) %>%
-  left_join(basin_food_area, by = c("state", "basin", "country")) %>%
-  left_join(basin_production, by = c("state", "basin", "country")) %>%
-  mutate(across(
-    c(
-      protected_1000ha, planted_forest_1000ha, bioenergy_1000ha,
-      food_harvested_area_1000ha, crop_production_pj
-    ),
-    ~ replace_na(.x, 0)
-  ))
+  basin_state_data <- basin_total %>%
+    left_join(basin_protected, by = c("state", "basin", "country")) %>%
+    left_join(basin_planted, by = c("state", "basin", "country")) %>%
+    left_join(basin_bioenergy, by = c("state", "basin", "country")) %>%
+    left_join(basin_food_area, by = c("state", "basin", "country")) %>%
+    left_join(basin_calorie_production(production_raw), by = c("state", "basin", "country")) %>%
+    mutate(across(
+      c(
+        protected_1000ha, planted_forest_1000ha, bioenergy_1000ha,
+        food_harvested_area_1000ha, crop_production_pj
+      ),
+      ~ replace_na(.x, 0)
+    ))
 
-basin_metrics <- basin_state_data %>%
-  pivot_wider(
-    names_from = state,
-    values_from = c(
-      total_land_1000ha, protected_1000ha, planted_forest_1000ha,
-      bioenergy_1000ha, food_harvested_area_1000ha, crop_production_pj
-    ),
-    names_glue = "{.value}_{state}"
-  ) %>%
-  filter(total_land_1000ha_011 > 0) %>%
-  mutate(
-    protection_change_pp = 100 *
-      (protected_1000ha_111 - protected_1000ha_011) / total_land_1000ha_011,
-    planted_forest_change_pp = 100 *
-      (planted_forest_1000ha_111 - planted_forest_1000ha_011) /
-      total_land_1000ha_011,
-    bioenergy_change_pp = 100 *
-      (bioenergy_1000ha_111 - bioenergy_1000ha_011) / total_land_1000ha_011,
-    cdr_land_change_pp = planted_forest_change_pp + bioenergy_change_pp,
-    food_area_change_pp = 100 *
-      (food_harvested_area_1000ha_111 - food_harvested_area_1000ha_011) /
-      total_land_1000ha_011,
-    crop_production_change_pj = crop_production_pj_111 - crop_production_pj_011,
-    crop_production_change_pct = if_else(
-      crop_production_pj_011 > 1e-6,
-      100 * crop_production_change_pj / crop_production_pj_011,
-      NA_real_
-    ),
-    response_class = case_when(
-      abs(cdr_land_change_pp) <= .01 & abs(food_area_change_pp) <= .01 ~
-        "Small change",
-      cdr_land_change_pp > 0 & food_area_change_pp < 0 ~
-        "CDR expansion, food-area contraction",
-      cdr_land_change_pp < 0 & food_area_change_pp > 0 ~
-        "CDR contraction, food-area expansion",
-      cdr_land_change_pp >= 0 & food_area_change_pp >= 0 ~ "Both expand",
-      TRUE ~ "Both contract"
+  basin_state_data %>%
+    pivot_wider(
+      names_from = state,
+      values_from = c(
+        total_land_1000ha, protected_1000ha, planted_forest_1000ha,
+        bioenergy_1000ha, food_harvested_area_1000ha, crop_production_pj
+      ),
+      names_glue = "{.value}_{state}"
+    ) %>%
+    filter(total_land_1000ha_011 > 0) %>%
+    mutate(
+      protection_change_pp = 100 *
+        (protected_1000ha_111 - protected_1000ha_011) / total_land_1000ha_011,
+      planted_forest_change_pp = 100 *
+        (planted_forest_1000ha_111 - planted_forest_1000ha_011) /
+        total_land_1000ha_011,
+      bioenergy_change_pp = 100 *
+        (bioenergy_1000ha_111 - bioenergy_1000ha_011) / total_land_1000ha_011,
+      cdr_land_change_pp = planted_forest_change_pp + bioenergy_change_pp,
+      food_area_change_pp = 100 *
+        (food_harvested_area_1000ha_111 - food_harvested_area_1000ha_011) /
+        total_land_1000ha_011,
+      crop_production_change_pj = crop_production_pj_111 - crop_production_pj_011,
+      crop_production_change_pct = if_else(
+        crop_production_pj_011 > 1e-6,
+        100 * crop_production_change_pj / crop_production_pj_011,
+        NA_real_
+      ),
+      response_class = case_when(
+        abs(cdr_land_change_pp) <= .01 & abs(food_area_change_pp) <= .01 ~
+          "Small change",
+        cdr_land_change_pp > 0 & food_area_change_pp < 0 ~
+          "CDR expansion, food-area contraction",
+        cdr_land_change_pp < 0 & food_area_change_pp > 0 ~
+          "CDR contraction, food-area expansion",
+        cdr_land_change_pp >= 0 & food_area_change_pp >= 0 ~ "Both expand",
+        TRUE ~ "Both contract"
+      )
     )
-  )
+}
+basin_metrics <- build_basin_metrics(target_year, basin_production_raw)
 
 response_levels <- c(
   "CDR expansion, food-area contraction",
@@ -1972,6 +3158,135 @@ p6d <- ggplot(
 figure_6 <- p6a / (p6b | p6c) / p6d +
   plot_layout(heights = c(1.2, 1, .95))
 save_figure(figure_6, 6, width = 7.2, height = 8.0)
+
+# Supplementary: basin-level species richness and land change ---------------
+
+# The basin value is the cell-area-weighted mean over the basin's occupied
+# cells of (NS_111 - NS_011) / NS_current, the MITI_PROT minus MITI richness
+# change relative to current richness. Land and production changes are the
+# Figure 6 basin metrics evaluated at the same AIM-BIO year.
+if (biodiversity_available[["SPnumber"]]) {
+  basin_id_raster <- rasterize(
+    vect(basin_boundaries %>% mutate(basin_id = row_number())),
+    biodiversity_land_mask, field = "basin_id", touches = TRUE
+  )
+  basin_richness <- tibble(
+    basin_id = values(basin_id_raster)[, 1],
+    cell_area_km2 = values(cellSize(biodiversity_land_mask, unit = "km"))[, 1],
+    current = values(species_current)[, 1],
+    richness_011 = values(read_biodiversity_grid("SPnumber", "011", biodiversity_year))[, 1],
+    richness_111 = values(read_biodiversity_grid("SPnumber", "111", biodiversity_year))[, 1],
+    occupied = biodiversity_occupied
+  ) %>%
+    filter(occupied, !is.na(basin_id)) %>%
+    mutate(richness_change = (richness_111 - richness_011) / current) %>%
+    group_by(basin_id) %>%
+    summarise(
+      richness_change_pct = 100 * weighted.mean(richness_change, cell_area_km2),
+      n_cells = n(), .groups = "drop"
+    ) %>%
+    left_join(
+      basin_boundaries %>% st_drop_geometry() %>% mutate(basin_id = row_number()),
+      by = "basin_id"
+    )
+
+  basin_bio_metrics <- build_basin_metrics(biodiversity_year) %>%
+    inner_join(basin_richness, by = c("basin", "country")) %>%
+    mutate(
+      land_change_sum_pp = cdr_land_change_pp + food_area_change_pp
+    )
+  write_csv(
+    basin_bio_metrics %>% select(-response_class),
+    file.path(source_data_root, "supplementary_basin_species_richness.csv")
+  )
+
+  basin_richness_sf <- basin_boundaries %>%
+    left_join(basin_bio_metrics, by = c("basin", "country"))
+  basin_richness_limit <- symmetric_limit(basin_bio_metrics$richness_change_pct)
+  p_basin_bio_map <- ggplot() +
+    geom_sf(data = basin_boundaries, fill = "grey96", colour = "white", linewidth = .03) +
+    geom_sf(
+      data = basin_richness_sf, aes(fill = richness_change_pct),
+      colour = "white", linewidth = .03
+    ) +
+    geom_sf(data = world_sf, fill = NA, colour = "grey30", linewidth = .12) +
+    scale_fill_gradient2(
+      low = "#7B3294", mid = "#F7F7F7", high = "#008837", midpoint = 0,
+      limits = c(-basin_richness_limit, basin_richness_limit), oob = squish,
+      na.value = "grey94",
+      name = sprintf("Species richness change, MITI_PROT − MITI, %d\n(%% of current richness)", biodiversity_year)
+    ) +
+    coord_world_no_antarctica() +
+    labs(tag = "a") +
+    theme_map(7.2) + small_map_tag_theme +
+    theme(legend.key.width = unit(9, "mm"), legend.title = element_text(size = 6.5))
+
+  basin_bio_drivers <- c(
+    protection_change_pp = "Additional protected area",
+    planted_forest_change_pp = "Planted forest",
+    bioenergy_change_pp = "Bioenergy cropland",
+    food_area_change_pp = "Food cropland",
+    land_change_sum_pp = "Planted forest + bioenergy + food cropland",
+    crop_production_change_pct = "Crop production (%)"
+  )
+  basin_bio_long <- basin_bio_metrics %>%
+    select(basin, country, richness_change_pct, total_land_1000ha_011,
+           all_of(names(basin_bio_drivers))) %>%
+    pivot_longer(all_of(names(basin_bio_drivers)),
+                 names_to = "driver", values_to = "driver_value") %>%
+    filter(is.finite(driver_value)) %>%
+    mutate(driver = factor(basin_bio_drivers[driver], levels = unname(basin_bio_drivers)))
+  basin_bio_stats <- basin_bio_long %>%
+    group_by(driver) %>%
+    summarise(
+      rho = cor(driver_value, richness_change_pct, method = "spearman"),
+      n = n(), .groups = "drop"
+    ) %>%
+    mutate(label = sprintf("rho = %.2f; n = %d", rho, n))
+  basin_bio_xlimits <- basin_bio_long %>%
+    group_by(driver) %>%
+    summarise(limit = symmetric_limit(driver_value), .groups = "drop")
+  basin_bio_long <- basin_bio_long %>%
+    left_join(basin_bio_xlimits, by = "driver") %>%
+    mutate(driver_value = pmax(pmin(driver_value, limit), -limit))
+  p_basin_bio_scatter <- ggplot(
+    basin_bio_long, aes(driver_value, richness_change_pct)
+  ) +
+    geom_hline(yintercept = 0, colour = "grey55", linewidth = .25) +
+    geom_vline(xintercept = 0, colour = "grey55", linewidth = .25) +
+    geom_point(aes(size = total_land_1000ha_011), colour = "#4D4D4D", alpha = .25, stroke = 0) +
+    geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
+                colour = "#0072B2", linewidth = .5) +
+    geom_text(
+      data = basin_bio_stats,
+      aes(x = -Inf, y = Inf, label = label), inherit.aes = FALSE,
+      hjust = -.08, vjust = 1.25, size = 2.1
+    ) +
+    facet_wrap(vars(driver), scales = "free_x", nrow = 2) +
+    scale_size_area(max_size = 2.6, guide = "none") +
+    scale_x_continuous(breaks = breaks_pretty(n = 4)) +
+    coord_cartesian(ylim = c(-basin_richness_limit, basin_richness_limit)) +
+    labs(
+      tag = "b",
+      x = "Change, MITI_PROT − MITI (% of basin land unless stated)",
+      y = "Species richness change, MITI_PROT − MITI\n(% of current richness)"
+    ) +
+    theme_pub(7.0) + tag_theme +
+    theme(panel.spacing.x = unit(4, "mm"), strip.text = element_text(size = 6.2))
+
+  supp_basin_bio <- p_basin_bio_map / p_basin_bio_scatter +
+    plot_layout(heights = c(1, 1.15))
+  ggsave(
+    file.path(supplementary_root, "supplementary_basin_species_richness.png"),
+    supp_basin_bio, width = 7.2, height = 7.4, units = "in", dpi = 600,
+    bg = "white", limitsize = FALSE
+  )
+  ggsave(
+    file.path(supplementary_root, "supplementary_basin_species_richness.pdf"),
+    supp_basin_bio, width = 7.2, height = 7.4, units = "in",
+    device = cairo_pdf, bg = "white", limitsize = FALSE
+  )
+}
 
 # Figure 7: country production shocks and trade adjustment ----------------
 

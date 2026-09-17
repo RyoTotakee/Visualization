@@ -765,7 +765,7 @@ I_{P,CDR}=(111-011)-(100-000)
 
 `country_land_market_evidence`は、ALPHAの流域・作物情報、`plum_data.gdx`の`protPlum`、AgMIPの国別CRP市場、AIM-LUグリッド再配置、BII、LUC排出を国コードで結合する。`protPlum`はREADME指定どおり`LandInt_global1`を使い、それ以外は`global2`である。
 
-`protPlum`は流域別にprimary forest、secondary forest、grasslandの保護率を持つ。GDXでは0値が省略されるため、3土地タイプ×`011`,`111`を0で補完してから単純平均し、`111-011`を流域保護圧力とする。さらに作物の比較前生産量で加重して国平均を作る。この値は「作物生産流域で自然地保護率がどれだけ上がったか」の代理指標であり、保護区とcroplandの直接交差面積ではない。
+`publication`のFigure 2は、`data/InputData/`の0.5度保護区政策入力から作る追加保護割合`max(0, T_PROT − T_BAU)`（セル陸地に対する%）を保護圧力とし、10%以下をLow、10–30%をMid、30%超をHighに固定で分ける。流域別の保護面積（MergedComparisonの統合保護面積を`qlTot_load`の流域総面積で割った`111-011`）を使う版は`supplementary_figure_2_basin_protection.*`に残し、流域値は`supplementary_figure_2_basin_protection_pressure.csv`に保存する。定義の詳細は`publication/README.md`を参照。
 
 国別の高収量農地損失割合は、作物ごとに流域収量の上位20%を定め、`011→111`で減った収穫面積のうち上位収量流域から失われた割合とする。sourceとsinkの収量比較では、作物間でt/haを直接平均しないよう、各作物の世界平均収量で標準化してから国集計する。
 
@@ -1071,9 +1071,9 @@ Managed forestを除いたネットでは、Both CDR `011`は2060年-1,687、207
 
 ### 21.4 保護圧力と土地応答を組み合わせた図2候補
 
-`03_protection_response_bivariate/figure2_candidate_protection_land_reallocation`は、研究の説明順に合わせた4面図である。Aは追加保護圧力、BはPlanted forest、Cは2G bioenergy cropland、DはFood croplandの応答を示す。B–Dの3×3色は、横軸が追加保護圧力Low–High、縦軸が土地用途のDecrease–Stable–Increaseである。濃い赤は高保護圧力流域での縮小、薄い青は低保護圧力流域での拡大候補を表す。
+`03_protection_response_bivariate/figure2_candidate_protection_land_reallocation`は、研究の説明順に合わせた4面図である。Aは流域総面積に対する追加保護面積割合（% of basin land）、BはPlanted forest、Cは2G bioenergy cropland、DはFood croplandの応答を示す。B–Dの3×3色は、横軸が追加保護面積割合Low–High、縦軸が土地用途のDecrease–Stable–Increaseである。濃い赤は高保護圧力流域での縮小、薄い青は低保護圧力流域での拡大候補を表す。
 
-ただし、供給されたAIM-LU NetCDFには0.5度の保護区マスクが含まれない。そこで保護側には`data/ALPHA/plum_data.gdx`の`protPlum`を使う。READMEの指定に従い`LandInt_global1`の`111-011`を取り、各ALPHA流域についてprimary forest `primf`、secondary forest `secdf`、grassland `gra`の保護率増加を単純平均した保護圧力代理指標を作る。この流域値をAIM-LUの0.5度格子へ割り当て、正の値の3分位でLow、Medium、Highに分ける。
+ただし、供給されたAIM-LU NetCDFには0.5度の保護区マスクが含まれない。そこで保護側には`all_scenario_World.gdx`の`qlProt_load`と`qlTot_load`を使う。`qlProt_load`のprimary forest `primf`、secondary forest `secdf`、grassland `gra`、pasture `pastr`、range `range`を合計し、流域総面積で割った`111-011`を追加保護面積割合として作る。この流域値をAIM-LUの0.5度格子へ割り当て、正の値の3分位でLow、Medium、Highに分ける。
 
 したがって、この図から「この0.5度セルが新規保護区と直接重なった」とは言えない。高圧力流域で土地が減る場所、同じ流域内または低圧力流域で土地が増える場所を探索する図である。現結果ではFood croplandについて、高圧力流域の減少セルで-139 Mha、高圧力流域の増加セルで+107 Mha、中圧力流域では-73 Mhaと+100 Mhaが同時に生じる。単純な高圧力流域から低圧力流域への移転だけではなく、同一の中・高圧力流域内でも細かな再配置が起きている。
 
@@ -1166,6 +1166,20 @@ Figure 6–8は、主結果を「流域内の土地再配置」「国境を越�
 
 詳細な式、変数名、係数適用率、回帰仕様は`publication/README.md`、再現コードは`publication/make_main_figures.R`、図に使った数値は`output/publication_figures/source_data/figure_6_*`、`figure_7_*`、`figure_8_*`に保存している。
 
+### 22.4 補足：PLUM保護区政策入力とCDR収量入力のグリッド地図
+
+`supplementary/supplementary_plum_protect_target.*`、`supplementary_plum_protect_additional.*`、`supplementary_plum_protect_all.*`、`supplementary_plum_serious_land_allpolicy.*`は、`data/InputData/`にあるAIM/PLUMの入力から、`_protect`シナリオの保護対象割合、BAUからの追加保護割合、`protect_all`、`serious_land_allpolicy`を0.5度グリッドで1枚ずつ示す。保護対象割合は`min(1, protect_all + serious_land_allpolicy)`、BAUは`min(1, protect_bs)`で、2030年SSP2の人口密度が0.1未満のセルはどちらも1に置く。これは上限適用前の政策目標であり、モデル内で有効な保護率ではない。
+
+`supplementary/supplementary_plum_afforestation_yield.*`と`supplementary_plum_bioenergy_yield.*`は、植林の炭素吸収速度`ACFout("AFRCUR", G)`（Mg C ha⁻¹ yr⁻¹）と、H08の天水ミスカンサス・スイッチグラス平均から作るバイオエネルギー作物収量（t ha⁻¹ yr⁻¹）を同じグリッドで示す。これらは保護区とCDRの配置を読む際の入力側の参照図であり、シナリオ結果ではない。グリッド値は`source_data/supplementary_plum_protection_inputs_grid.csv.gz`に保存する。定義の詳細は`publication/README.md`を参照。
+
+### 22.5 補足：AIM-BIOの種数・種構成類似度・ESHI
+
+`supplementary/supplementary_species_richness_BAU.*`、`_MITI.*`、`_MITI_PROT.*`は、`data/AIMBIO/SPnumber/`の全分類群種数を0.5度グリッドで示し、`supplementary_species_richness_MITI_PROT_minus_MITI.*`はMITI_PROTとMITIの差を示す。年は`TARGET_YEAR`以下で最も遅いAIM-BIO出力年（既定では2090年）である。種構成類似度（`data/AIMBIO/ComSim/`）についても同じ構成の`supplementary_compositional_similarity_*.*`を出力する。海洋セルはAIM-LUの陸地マスクで除く。
+
+`supplementary/supplementary_biodiversity_trajectories.*`は、BAU、MITI、MITI_PROTについて、2030–2090年の全陸地セルの平均を実線、25・75パーセンタイルを破線で示す。Figure 1eは同じ統計量をMITIとMITI_PROTだけで示す。種数はセルごとの現在比変化`(NS_future − NS_current) / NS_current`、種構成類似度は現在との類似度そのものである。`Current`層で種数が0のセルは統計から除く。`supplementary_eshi_regions.*`は、`data/AIMBIO/ESH/`の世界とR5地域別ESHI（`allspecies`、2005年比）の推移をシナリオ別に示す。ESHIは2005年比の生息適地面積の幾何平均で、1が2005年水準である。数値は`source_data/supplementary_biodiversity_grid_trajectories.csv`と`supplementary_eshi_regions.csv`に保存する。
+
+`supplementary/supplementary_basin_species_richness.*`は、MITI_PROT − MITIの種数変化（現在種数比、セル面積加重の流域平均）を流域地図にし、Figure 6と同じ流域指標（追加保護面積、植林、バイオエネルギー農地、食料農地、それらの正味合計、作物生産変化）との散布図に単回帰線とSpearmanの`rho`を添える。土地指標は種数と同じ年で評価する。数値は`source_data/supplementary_basin_species_richness.csv`に保存する。
+
 ## 23. 図とCSVを読む際の留意点
 
 - 地図の色範囲は、極端な少数セルや国で全体の差が見えなくなることを避けるため、その図に含まれる非ゼロ絶対値の98パーセンタイルを正負対称の上限にする。範囲外は端色に丸めるが、CSVの値は切り詰めない。
@@ -1176,4 +1190,4 @@ Figure 6–8は、主結果を「流域内の土地再配置」「国境を越�
 - 世界とR10はGDXの集約値を直接使う。国別図の値を足したものではなく、国コードの欠損や地図結合に左右されない。
 - 06の物理量`protection_interaction`はShapley寄与ではなく差の差である。図の`Context difference`は2つの相対的Protection effectのpercentage-point差である。07の積み上げ図はこの物理的な差の差を植林、BECCS、三者の相互作用へ分ける。どれも値が大きいだけで望ましい相乗効果とは限らず、指標の正負と単位を合わせて解釈する。
 - `PJ/yr`は栄養の質やタンパク質量を表さない。`CALI`は`kcal/cap/day`で示す平均的な食料摂取熱量であり、国内分布、アクセス、価格負担、栄養構成を単独では示さない。
-- 現在の`AIM-LUmap`の`LC_area_share`は、旧`combine.gms`が同じ土地配分をRbasinとR17から重複加算したため、おおむね2倍になっている。グリッド土地利用を読むスクリプトは、修正版でNetCDFを再作成するまでの暫定処理として値を2で割る。コード中では`TEMPORARY WORKAROUND`として明示している。再作成後はこの補正を削除する。class 1は`CL + CROP_FLW`であり、食料生産農地だけでなく休閑地を含む。値を0–1へ丸める処理やMergedComparisonへの比例補正は行わない。
+- 現在の`AIM-LUmap`の`LC_area_share`は、旧`combine.gms`が同じ土地配分をRbasinとR17から重複加算したため、おおむね2倍になっている。グリッド土地利用を読むスクリプトは、修正版でNetCDFを再作成するまでの暫定処理として値を2で割る。コード中では`TEMPORARY WORKAROUND`として明示している。再作成後はこの補正を削除する。さらに一部のセルでは区分合計が2を超え、シナリオ間でセル合計が一致しないため、`publication`のFigure 3b–cでは各セルの区分構成を共通の陸地率`min(合計_011, 合計_111, 1)`へ再スケールしてから用途間の移動を追跡する。この処理も同じく暫定であり、再作成後に削除する。class 1は`CL + CROP_FLW`であり、食料生産農地だけでなく休閑地を含む。値を0–1へ丸める処理やMergedComparisonへの比例補正は行わない。
