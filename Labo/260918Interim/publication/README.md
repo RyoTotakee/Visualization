@@ -1,6 +1,6 @@
-# 本番図8枚の再現手順と定義
+# 本番図9枚の再現手順と定義
 
-`make_main_figures.R`はFigure 1–8と補足用Shapley図を一括作成する独立したRスクリプトです。`prog/`以下の探索用コードは読み込まず、GDX・NetCDF・shapefileを直接処理します。図中はパネル記号、短い見出し、軸、単位、凡例に限定し、詳細な定義をこの文書にまとめています。
+`make_main_figures.R`はFigure 1–9と補足用Shapley図を一括作成する独立したRスクリプトです。`prog/`以下の探索用コードは読み込まず、GDX・NetCDF・shapefileを直接処理します。図中はパネル記号、短い見出し、軸、単位、凡例に限定し、詳細な定義をこの文書にまとめています。
 
 ## 実行方法
 
@@ -10,7 +10,7 @@
 Rscript publication/make_main_figures.R
 ```
 
-既定の評価年は2100年です。2050年版は次のように作成できます。
+既定の評価年は2100年です。2050年版は次のように作成でき、出力先は`output/publication_figures_2050/`になります。
 
 ```bash
 TARGET_YEAR=2050 Rscript publication/make_main_figures.R
@@ -18,8 +18,8 @@ TARGET_YEAR=2050 Rscript publication/make_main_figures.R
 
 出力先は`output/publication_figures/`です。
 
-- `figure_1/`–`figure_8/`：600 dpi PNGとベクターPDF
-- `supplementary/`：BAU／PROT保護面積分布、Figure 2保護指標のデータソース比較、NoAff・NoBioを使う補足Shapley図、双方向農地遷移図、全土地を含むサンキー図、流域保護面積版のFigure 2、PLUM保護区政策入力とCDR収量入力のグリッド地図
+- `figure_1/`–`figure_9/`：600 dpi PNGとベクターPDF。Figure 1–5には本文で引用する数値を1行1値で並べた`figure_N_key_values.csv`（列：`panel`, `quantity`, `comparison`, `region`, `year`, `value`, `unit`）を併せて保存します
+- `supplementary/`：BAU／PROT保護面積分布、Figure 2保護指標のデータソース比較、NoAff・NoBioを使う補足Shapley図、保全地域拡大の追加効果の地域版、双方向農地遷移図、全土地を含むサンキー図、流域保護面積版のFigure 2、PLUM保護区政策入力とCDR収量入力のグリッド地図、AIM-BIO生物多様性指標、流域別の種数と土地変化、Figure 9の加重版
 - `source_data/`：各図に使ったCSVまたは圧縮CSV
 - `session_info.txt`：Rとパッケージの実行環境
 
@@ -44,6 +44,8 @@ TARGET_YEAR=2050 Rscript publication/make_main_figures.R
 `data/ALPHA/plum_data.gdx`のみ、ファイル内のシナリオ名に合わせて末尾`LandInt_global1`を使います。他の入力は`LandInt_global2`です。
 
 ## 入力データ
+
+入力はすべて`data/260917/`以下に置きます（スクリプトの`data_dir`）。以下のパスは`data/260917/`からの相対パスです。
 
 - `data/PLUM/Mergedcomparison.gdx`
   - `IAMCTempwoU`：世界・R10・国・流域の土地面積と統合保護面積
@@ -141,7 +143,7 @@ T^{\mathrm{PROT}}=\min(1,\ \texttt{protect\_all}+\texttt{serious\_land\_allpolic
 - Mid：10%超30%以下
 - High：30%超
 
-追加保護がゼロのセルはLowに入ります。境界は`figure_2_class_thresholds.csv`に保存します（各行に単位も記録）。土地応答はAIM-LUのグリッド差`MITI_PROT − MITI`です。現在のNetCDFには流域値とR17集計値の重複があるため、土地割合は2で割ってから差分を計算します。
+追加保護がゼロのセルはLowに入ります。境界は`figure_2_class_thresholds.csv`に保存します（各行に単位も記録）。土地応答はAIM-LUのグリッド差`MITI_PROT − MITI`です。
 
 - Decrease：−0.1 percentage points未満
 - Stable：±0.1 percentage points以内
@@ -172,14 +174,14 @@ MergedComparisonの`Lan_Cov`はモデルが配分する土地面積であり、�
 
 MITIからMITI_PROTへの変化について、食料農地を起点として次の4シグナルを示します。
 
-現在のAIM-LU NetCDFは、流域値とそのR17集計値がグリッド出力時に重複加算されているため、土地割合を2で割って使用します。これは修正済み`combine.gms`でNetCDFを再作成するまでの暫定処理です。NetCDF class 1は`CL + CROP_FLW`であり、Figure 3のCroplandには食料生産農地と休閑地の両方が含まれます。MergedComparisonへの比例補正は行いません。
+NetCDF class 1は`CL + CROP_FLW`であり、Figure 3のCroplandには食料生産農地と休閑地の両方が含まれます。MergedComparisonへの比例補正は行いません。
 
-MergedComparisonには休閑地だけを示す独立したIAMC変数はありませんが、`Lan_Cov_Cro - Lan_Cov_Cro_Non_Ene_Cro - Lan_Cov_Cro_Ene_Cro_2nd_gen`として計算できます。したがって、NetCDF class 1と対応する集計量は`Lan_Cov_Cro - Lan_Cov_Cro_Ene_Cro_2nd_gen`です。ただし、グリッド出力とMergedComparisonでは集計経路が異なるため、既存NetCDFを2で割った世界合計がMergedComparisonと完全に一致するとは限りません。
+MergedComparisonには休閑地だけを示す独立したIAMC変数はありませんが、`Lan_Cov_Cro - Lan_Cov_Cro_Non_Ene_Cro - Lan_Cov_Cro_Ene_Cro_2nd_gen`として計算できます。したがって、NetCDF class 1と対応する集計量は`Lan_Cov_Cro - Lan_Cov_Cro_Ene_Cro_2nd_gen`です。ただし、グリッド出力とMergedComparisonでは集計経路が異なるため、NetCDFの世界合計がMergedComparisonと完全に一致するとは限りません。
 
 - Cropland → planted forest
 - Cropland → bioenergy
 - Cropland → Other
-- Newly expanded cropland
+- Additional cropland
 
 食料農地減少を\(L_i\)、植林・バイオ増加を\(F_i,B_i\)とすると、負側の対応量は、
 
@@ -189,11 +191,11 @@ C_{i,F}^- = M_i^-\frac{F_i}{F_i+B_i},\qquad
 C_{i,B}^- = M_i^-\frac{B_i}{F_i+B_i}
 \]
 
-です。残差を`Cropland → Other`とします。Newly expanded croplandは、植林・バイオの減少元へ細分せず、食料農地が増えたセルの増加量をそのまま示します。
+です。残差を`Cropland → Other`とします。Additional croplandは、植林・バイオの減少元へ細分せず、食料農地が増えたセルの増加量をそのまま示します。
 
-パネルaは各セルで最大の遷移シグナルだけを色相で示します。区分名はCropland → planted forest、Cropland → bioenergy、Cropland → Other、Newly expanded croplandです。色の濃さはグリッド面積割合の変化（percentage points）です。4区分に共通するスケールを使い、上限は正の変化量を全区分でプールした98パーセンタイルです。小さい変化を読み取れるよう色濃度だけを平方根変換し、凡例の数値軸は元のpercentage-point値で示します。上限を超える値は端色に丸めます。
+パネルaは各セルで最大の再配置シグナルだけを色相で示します。区分名はCropland → planted forest、Cropland → bioenergy、Cropland → Other、Additional croplandです。色の濃さはグリッド面積割合の変化（percentage points）です。4区分に共通するスケールを使い、上限は正の変化量を全区分でプールした98パーセンタイルです。小さい変化を読み取れるよう色濃度だけを平方根変換し、凡例の数値軸は元のpercentage-point値で示します。上限を超える値は端色に丸めます。
 
-MITIまたはMITI_PROTで食料農地割合が1%以上あり、両シナリオ間の食料農地変化が±0.1 percentage points以内のセルをStable croplandとしてクリーム色で表示します。これにより、灰色のCropland → Otherと区別します。遷移として表示する閾値も0.1 percentage pointsです。共通上限値は`figure_3_food_transition_summary.csv`の`display_limit_pp`に保存します。平方根変換は図の軸名ではなく本説明に記録しています。
+MITIまたはMITI_PROTで食料農地割合が1%以上あり、両シナリオ間の食料農地変化が±0.1 percentage points以内のセルをUnchanged croplandとしてクリーム色で表示します。これにより、灰色のCropland → Otherと区別します。再配置として表示する閾値も0.1 percentage pointsです。共通上限値は`figure_3_food_transition_summary.csv`の`display_limit_pp`に保存します。平方根変換は図の軸名ではなく本説明に記録しています。
 
 ### b 土地区分別の総面積
 
@@ -212,11 +214,11 @@ MITIまたはMITI_PROTで食料農地割合が1%以上あり、両シナリオ�
 | Restored / abandoned land | 6, 7, 8 |
 | Natural forest | 4 |
 | Other natural land | 9（`GL + OL`） |
-| Protected natural land | 上記のNatural forest、Other natural land、Restored / abandoned landのうち保護区に重なる部分 |
+| Protected natural land | 上記のNatural forestとOther natural landのうち保護区に重なる部分 |
 
 class 10（built-up）は現在のNetCDFで0、class 11–12はclass 6–7の内数なので使いません。
 
-保護区は`data/InputData/`の政策入力を同じ0.5度グリッドに重ねて求めます。MITIはBAUの保護対象割合`min(1, protect_bs)`、MITI_PROTは`max(BAU, min(1, protect_all + serious_land_allpolicy))`で、2030年SSP2人口密度が0.1未満のセルはどちらも1です。セルの保護面積は、この割合にセル陸地面積を掛けた値と、セル内の保護対象ノード（Natural forest、Other natural land、Restored / abandoned land）の合計面積の小さい方とし、保護対象ノードへ面積比で配分して`Protected natural land`へ移します。これはPLUMの`EQYPROTECT`が`PRM_SEC`（自然植生）に保護率の下限を課す構造に対応します。
+保護区は`data/InputData/`の政策入力を同じ0.5度グリッドに重ねて求めます。MITIはBAUの保護対象割合`min(1, protect_bs)`、MITI_PROTは`max(BAU, min(1, protect_all + serious_land_allpolicy))`で、2030年SSP2人口密度が0.1未満のセルはどちらも1です。セルの保護面積は、この割合にセル陸地面積を掛けた値と、セル内の保護対象ノード（Natural forest、Other natural land）の合計面積の小さい方とし、保護対象ノードへ面積比で配分して`Protected natural land`へ移します。これはPLUMの`EQYPROTECT`が`PRM_SEC`（自然植生）に保護率の下限を課す構造に対応します。
 
 セル内では、面積が減ったノードの減少量を、面積が増えたノードへ増加量の比で配分します。ノード\(k\)の減少を\(L_k\)、ノード\(j\)の増加を\(G_j\)とすると、
 
@@ -224,19 +226,15 @@ class 10（built-up）は現在のNetCDFで0、class 11–12はclass 6–7の内
 F_{kj}=L_k\frac{G_j}{\sum_j G_j}
 \]
 
-です。全セルの\(F_{kj}\)に`pixel_area`を掛けて合計した値がサンキーの帯幅で、単位はmillion haです。同じノードにとどまる面積\(\min(a_k^{011},a_k^{111})\)は描きません。ノード名の括弧内は、左がそのノードから出た面積、右がそのノードに入った面積です。
+です。セルの減少合計と増加合計が一致しない場合は、小さい方の面積だけを配分し、\(L_k\)を\(\min(\sum_k L_k,\sum_j G_j)/\sum_k L_k\)倍に縮めます。区分割合の再スケールは行いません。全セルの\(F_{kj}\)に`pixel_area`を掛けて合計した値がサンキーの帯幅で、単位はmillion haです。同じノードにとどまる面積\(\min(a_k^{011},a_k^{111})\)は描きません。ノード名の括弧内は、左がそのノードから出た面積、右がそのノードに入った面積です。
 
-Natural forest、Other natural land、Restored / abandoned landからProtected natural landへの流れは、土地用途は変わらず保護区に指定されただけの面積です。この指定のみの流れ（約1,280 Mha）は帯幅の大半を占めて用途転換を読めなくするため、パネルcには描かず、`figure_3c_grid_transitions.csv`に`flow_type = protection status only`として保存します。Cropland、Bioenergy cropland、Planted forest、PastureからProtected natural landへの流れは、用途が自然植生へ戻り、かつ保護区に入った面積なので描きます。
+Natural forestとOther natural landからProtected natural landへの流れは、土地用途は変わらず保護区に指定されただけの面積です。この流れ（約1,300 Mha）は帯幅の大半を占めて用途転換を読めなくするため、パネルcには描かず、`figure_3c_grid_transitions.csv`に`flow_type = new protection`として保存します。Cropland、Bioenergy cropland、Planted forest、Pasture、Restored / abandoned landからProtected natural landへの流れは、用途が自然植生へ戻り、かつ保護区に入った面積なので描き、`flow_type = other source to protected land`とします。Protected natural landから他ノードへ戻る流れは`from protected land`とし、描きません。
 
-この分解は同一セル内の共変化を整合的に配分した診断量です。個々の土地parcelを追跡した実測的な遷移行列ではありません。
+この分解は、同じ年の2つのシナリオを同一セルで比較し、区分間の面積差を整合的に配分した診断量です。時間方向の土地転換や個々の土地parcelの追跡ではなく、シナリオ間の土地配分の対応を示します。
 
 ### Supplementary：全土地を含むサンキー図
 
-`supplementary/supplementary_full_land_sankey.*`は、パネルcで省いた不変面積と指定のみの流れを含め、ノード高をパネルbの総面積に一致させた版です。不変面積は薄く、指定のみの流れはやや薄く、用途転換は濃く描きます。総陸地に対して用途転換は1%未満なので、この版では個々の転換を読み取れません。流れの一覧は`supplementary_full_land_sankey.csv`に`flow_type`（`persistent`、`protection status only`、`land-use change`）付きで保存します。
-
-### NetCDFの暫定処理
-
-現在のAIM-LU NetCDFには、2倍の重複加算に加えて、一部のセルで区分合計が1を超え、シナリオ間でセル合計が一致しない問題があります。パネルb–cでは各セルの区分構成を共通の陸地率`min(合計_011, 合計_111, 1)`へ再スケールしてから追跡します。コード中では`TEMPORARY WORKAROUND`として明示しており、NetCDFの再作成後に2で割る処理とともに削除します。
+`supplementary/supplementary_full_land_sankey.*`は、パネルcで省いた不変面積と指定のみの流れを含め、ノード高をパネルbの総面積に一致させた版です。不変面積は薄く、保護区指定の流れはやや薄く、用途転換は濃く描きます。総陸地に対して用途転換は1%未満なので、この版では個々の転換を読み取れません。流れの一覧は`supplementary_full_land_sankey.csv`に`flow_type`（`persistent`、`new protection`、`from protected land`、`other source to protected land`、`land-use change`）付きで保存します。
 
 双方向に細分した6区分版は`supplementary_bidirectional_cropland_transitions.*`として残しています。
 
@@ -268,12 +266,26 @@ AgMIPのCRPについて\(P=A Y\)となるeffective caloric yield \(Y=P/A\)を定
 
 ## Figure 5：農業市場影響
 
-主図はBAU、MITI、MITI_PROTだけを使います。
+パネルaとcはBAU、MITI、MITI_PROT、パネルbはさらにPROTを使います。
 
 - a：世界のProduction、Producer price、Food intakeについて、MITIとMITI_PROTのBAU比
-- b：R10のProduction、Producer price、Food intakeのBAU比。3指標を横に並べ、地域名は左端に1回だけ示す
+- b：保全地域拡大の追加効果を、緩和策なし（`PROT − BAU`、BAU比%）と緩和策あり（`MITI_PROT − MITI`、MITI比%）で並べたもの。同じ保全政策の効果が土地CDRを伴う緩和策の下で何倍になるかを示す。数値は`figure_5b_protection_effect.csv`
+- c：R10のProduction、Producer price、Food intakeのBAU比。3指標を横に並べ、地域名は左端に1回だけ示す
 
-地域図は青いMITI棒と朱色のMITI_PROT棒を地域ごとに並べます。Tradeは主図から除外しています。
+地域図は青いMITI棒と朱色のMITI_PROT棒を地域ごとに並べます。Tradeは主図から除外しています。パネルbの地域版は`supplementary/supplementary_protection_effect_regions.*`に保存します。
+
+### 補足：土地CDRの構成別にみた保全地域拡大の追加効果
+
+`supplementary/supplementary_protection_effect_cdr_variants.*`は、保全地域拡大の追加効果（拡大なしのシナリオに対する変化率）を緩和策の4条件で比較します。
+
+| 条件 | 拡大なし | 拡大あり |
+|---|---|---|
+| No mitigation | `000` BAU | `100` PROT |
+| Mitigation without BECCS | `010` MITI_NoBECCS | `110` MITI_PROT_NoBECCS |
+| Mitigation without planted forest | `001` MITI_NoPlantedForest | `101` MITI_PROT_NoPlantedForest |
+| Full mitigation | `011` MITI | `111` MITI_PROT |
+
+パネルaは世界、bは10地域で、指標はProduction、Producer price、Food intakeです。数値は`supplementary_protection_effect_cdr_variants.csv`に保存します。炭素価格を含み土地CDRを含まない緩和シナリオはないため、緩和策の非CDR要素の寄与は分離できません。
 
 - Production、Consumption、Exports、Imports、Net exports：`million kcal × 4.184 × 10⁻⁶`でPJ yr⁻¹へ変換
 - Producer price：`USD / (million kcal × 4.184)`でUSD GJ⁻¹
@@ -342,6 +354,28 @@ R_i=100\frac{CONS_{111}-CONS_{011}}{CONS_{011}}-D_i-T_i
 パネルcは国別の記述的回帰です。目的変数ごとにAdditional protection、Planted forest、Bioenergy、MITI輸入依存度を標準化し、R10固定効果を加え、`sqrt(MITI crop production)`を回帰ウェイトとして推定します。点は標準化係数、線は通常の標準誤差による95%区間です。パネルdは同じ変数間の重みなしSpearman順位相関です。回帰・相関は国の規模と地域差を考慮しながら候補関係を絞る探索的分析であり、保護区、CDR、農業影響の因果寄与を識別するものではありません。
 
 今回の出力では、Additional protectionと生産変化の単純相関は弱い一方、Planted forestおよびFood croplandの変化は生産変化と正に対応しています。これは、保護面積そのものよりも、保護区導入後に生じる生産用地・CDR用地の再配置が国別生産差と結び付く可能性を示すため、Figure 3・6の空間診断と合わせて読みます。
+
+## Figure 9：流域の追加保護と農業・土地応答
+
+横軸は流域の追加保護面積（2100年の`MITI_PROT − MITI`、MITI流域面積に対するpercentage points）で、Figure 6と同じ`data/ALPHA/all_scenario_World.gdx`の`qlProt_load`と`qlTot_load`から計算します。縦軸は6つの応答で、いずれも同じ年の`MITI_PROT − MITI`です。
+
+- Crop production（%）：Figure 6と同じ食料作物のエネルギー換算生産量の変化率
+- Crop yield（%）：Figure 4と同じ、BAU収穫面積で重み付けした食料作物収量`yldBas_load`の変化率
+- Producer price（%）：`pp_load`（国・品目別生産者価格）を流域のMITI生産量`qsBas_load`で重み付けしたLaspeyres指数の変化率。食料作物`food_crop_codes`のみを使い、価格は国レベルなので流域差は作物構成の差から生じます
+- Import dependence（pp of consumption）：Figure 7のAgMIP CRPによる国別の輸入量／消費量の変化（percentage points）。国の値をその国の全流域に割り当てます
+- Planted forest、Bioenergy cropland（pp of basin land）：Figure 6と同じ`qlAfr_load`と`qlBas_load`（`ecr`）の変化をMITI流域面積で割った値
+
+点は流域（重み付けなし）、青線は通常最小二乗の回帰直線と95%信頼帯です。各パネルの数値は回帰の傾き（応答の単位／pp）、決定係数、傾きのp値、Spearman順位相関、流域数で、外れ値を切り詰める前の全流域で計算します。表示では縦軸を`symmetric_limit`（絶対値の98パーセンタイル）で切り詰め、外側の点は境界に置きます。数値は`figure_9_basin_protection_responses.csv`と`figure_9_basin_regression_statistics.csv`に保存します。
+
+これらは記述的な単回帰であり、流域の規模や地域差を調整していません。
+
+### 加重版（Supplementary）
+
+流域を等しく扱うと、生産量や面積の小さい流域の不安定な変化率が外れ値として回帰と分布を左右します。`supplementary/`には、農業応答（生産量、収量、生産者価格、輸入依存度）をMITI作物生産量`crop_production_pj_011`、土地応答（植林、バイオエネルギー農地）をMITI流域面積`total_land_1000ha_011`で重み付けした3つの版を保存します。数値は加重最小二乗の傾き、決定係数、p値、流域数で、`supplementary_figure_9_weighted_statistics.csv`に保存します。
+
+- `supplementary_figure_9_decile_bins.*`：追加保護の10分位ごとに加重平均とブートストラップ95%区間（1000回、`set.seed(20260917)`）を赤で示し、加重回帰直線を青、流域の点を灰色で重ねます。数値は`supplementary_figure_9_decile_bins.csv`
+- `supplementary_figure_9_protection_classes.*`：追加保護の流域3分位（Low／Mid／High、境界は図中に表示）ごとの箱ひげ（重みなし、`symmetric_limit`で切り詰め）と加重平均±95%区間。数値は`supplementary_figure_9_protection_classes.csv`
+- `supplementary_figure_9_bubble.*`：点の面積を重み（パネル内の最大流域を1とする相対値）にしたバブル図と加重回帰直線・95%信頼帯
 
 ## 補足Shapley図
 
