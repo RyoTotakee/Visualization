@@ -1146,7 +1146,7 @@ Figure 6–8は、主結果を「流域内の土地再配置」「国境を越�
 
 ### 22.1 Figure 6：流域のCDR用地・食料農地・生産量
 
-`all_scenario_World.gdx`から、流域総面積`qlTot_load`、保護面積`qlProt_load`、Planted forest`qlAfr_load`、Bioenergy作物`qlBas_load[ecr]`、食料作物収穫面積`qlBas_load[13 crops]`、作物生産`qsBas_load[13 crops]`を抽出する。土地変化はMITIの流域総面積で割ったpercentage-point差である。作物生産はALPHAの国・品目別`calCoef`を使いPJへ変換する。係数適用率は重量ベースで約93.5%であり、欠損係数を持つ生産はカロリー集計へ入らない。
+`all_scenario_World.gdx`から、流域総面積`qlTot_load`、Planted forest`qlAfr_load`、Bioenergy作物`qlBas_load[ecr]`、食料作物収穫面積`qlBas_load[13 crops]`、作物生産`qsBas_load[13 crops]`を抽出する。保護面積は`Mergedcomparison.gdx`の流域別`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`（Figure 2と同じ系列）を使う。土地変化はMITIの流域総面積で割ったpercentage-point差である。作物生産はALPHAの国・品目別`calCoef`を使いPJへ変換する。係数適用率は重量ベースで約93.5%であり、欠損係数を持つ生産はカロリー集計へ入らない。
 
 地図は、Planted forestとBioenergyの合計変化と食料収穫面積変化の符号を組み合わせ、CDR拡大・食料農地縮小、CDR縮小・食料農地拡大、双方拡大、双方縮小、小変化に分類する。散布図は同じ流域差を連続量で示す。結果では、追加保護率と作物生産変化のSpearman相関は-0.32、Planted forest変化とは+0.45、Bioenergy変化とは+0.29である。これは保護面積だけでなく、保護区追加後のCDR用地と食料農地の再配分が生産応答と結び付くことを示唆する。ただし流域間の土地移動経路を直接追跡したものではない。
 
@@ -1176,13 +1176,13 @@ Figure 6–8は、主結果を「流域内の土地再配置」「国境を越�
 
 `supplementary/supplementary_species_richness_BAU.*`、`_MITI.*`、`_MITI_PROT.*`は、`data/AIMBIO/SPnumber/`の全分類群種数を0.5度グリッドで示し、`supplementary_species_richness_MITI_PROT_minus_MITI.*`はMITI_PROTとMITIの差を示す。年は`TARGET_YEAR`以下で最も遅いAIM-BIO出力年（既定では2090年）である。種構成類似度（`data/AIMBIO/ComSim/`）についても同じ構成の`supplementary_compositional_similarity_*.*`を出力する。海洋セルはAIM-LUの陸地マスクで除く。
 
-`supplementary/supplementary_biodiversity_trajectories.*`は、BAU、MITI、MITI_PROTについて、2030–2090年の全陸地セルの平均を実線、25・75パーセンタイルを破線で示す。Figure 1eは同じ統計量をMITIとMITI_PROTだけで示す。種数はセルごとの現在比変化`(NS_future − NS_current) / NS_current`、種構成類似度は現在との類似度そのものである。`Current`層で種数が0のセルは統計から除く。`supplementary_eshi_regions.*`は、`data/AIMBIO/ESH/`の世界とR5地域別ESHI（`allspecies`、2005年比）の推移をシナリオ別に示す。ESHIは2005年比の生息適地面積の幾何平均で、1が2005年水準である。数値は`source_data/supplementary_biodiversity_grid_trajectories.csv`と`supplementary_eshi_regions.csv`に保存する。
+`supplementary/supplementary_biodiversity_trajectories_mean.*`は、BAU、MITI、MITI_PROTについて、2030–2090年の全陸地セルの平均を示し、`_median.*`は中央値を実線、25・75パーセンタイルを破線で示す。Figure 1eは同じ統計量をMITIとMITI_PROTだけで示す。種数はセルごとの現在比変化`(NS_future − NS_current) / NS_current`、種構成類似度は現在との類似度そのものである。`Current`層で種数が0のセルは統計から除く。`supplementary_eshi_regions.*`は、`data/AIMBIO/ESH/`の世界とR5地域別ESHI（`allspecies`、2005年比）の推移をシナリオ別に示す。ESHIは2005年比の生息適地面積の幾何平均で、1が2005年水準である。数値は`source_data/supplementary_biodiversity_grid_trajectories.csv`と`supplementary_eshi_regions.csv`に保存する。
 
-`supplementary/supplementary_basin_species_richness.*`は、MITI_PROT − MITIの種数変化（現在種数比、セル面積加重の流域平均）を流域地図にし、Figure 6と同じ流域指標（追加保護面積、植林、バイオエネルギー農地、食料農地、それらの正味合計、作物生産変化）との散布図に単回帰線とSpearmanの`rho`を添える。土地指標は種数と同じ年で評価する。数値は`source_data/supplementary_basin_species_richness.csv`に保存する。
+`supplementary/supplementary_basin_species_richness.*`は、MITI_PROT − MITIの種数変化（現在種数比、セル面積加重の流域平均）を流域地図にし、Figure 6と同じ流域指標（追加保護面積、植林、バイオエネルギー農地、食料農地、それらの正味合計、作物生産変化）との散布図に単回帰線とSpearmanの`rho`を添える。土地指標は種数と同じ年で評価する。数値は`source_data/supplementary_basin_species_richness.csv`に保存する。`supplementary_basin_compositional_similarity_mean.*`と`_median.*`は、種構成類似度の変化`100 × (ComSim_111 − ComSim_011)`（パーセントポイント）について同じ構成の図で、流域値をそれぞれセル面積加重の平均と中央値（散布図では25–75パーセンタイルを縦線で示す）とする。 `supplementary_biodiversity_protection_effect.*`は、Figure 5bと同じ構成で、ESHI（全種・絶滅危惧種）、BII、種構成類似度、種数について保全地域拡大の効果を緩和策なし（PROT − BAU）と緩和策あり（MITI_PROT − MITI）で比べ、パネルbでは種構成類似度と種数のセル平均を追加保護割合（≤10%、10–30%、>30%）で分ける。数値は`source_data/supplementary_biodiversity_protection_effect.csv`に保存する。 `supplementary_hub_inputs.*`は、パネルaに`data/ALPHA/hub_data.gdx`の`Prc_car_hub`（USD/t CO2、全国同一）と`QENE_hub`（第2世代バイオエネルギー作物需要、Hub 17地域、1000 tをMtに換算）をパネルbに年次で示す。PROT系は保護なしと同値なので描かない。数値は`source_data/supplementary_hub_carbon_price.csv`と`supplementary_hub_bioenergy_demand.csv`に保存する。
 
 ### 22.6 Figure 9：流域の追加保護と農業・土地応答
 
-流域の追加保護面積（`MITI_PROT − MITI`、MITI流域面積比pp）を横軸に、作物生産量、収量、生産者価格、輸入依存度、植林面積、バイオエネルギー農地の変化を縦軸にとった6パネルの散布図である。生産者価格は`pp_load`を流域のMITI生産量で重み付けしたLaspeyres指数、輸入依存度はFigure 7の国別値を流域に割り当てる。各パネルに通常最小二乗の傾き、決定係数、p値、Spearman順位相関、流域数を記す。定義は`publication/README.md`のFigure 9節にある。
+流域の追加保護面積（`MITI_PROT − MITI`、MITI流域面積比pp）を横軸に、作物生産量、収量、生産者価格、純輸入依存度、植林面積、バイオエネルギー農地の変化を縦軸にとった6パネルの散布図である。生産者価格は`pp_load`を流域のMITI生産量で重み付けしたLaspeyres指数、純輸入依存度（（輸入−輸出）／消費）はFigure 7の国別値を流域に割り当てる。各パネルに通常最小二乗の傾き、決定係数、p値、Spearman順位相関、流域数を記す。定義は`publication/README.md`のFigure 9節にある。
 
 ## 23. 図とCSVを読む際の留意点
 

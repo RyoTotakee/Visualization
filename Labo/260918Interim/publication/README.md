@@ -18,8 +18,8 @@ TARGET_YEAR=2050 Rscript publication/make_main_figures.R
 
 出力先は`output/publication_figures/`です。
 
-- `figure_1/`–`figure_9/`：600 dpi PNGとベクターPDF。Figure 1–5には本文で引用する数値を1行1値で並べた`figure_N_key_values.csv`（列：`panel`, `quantity`, `comparison`, `region`, `year`, `value`, `unit`）を併せて保存します
-- `supplementary/`：BAU／PROT保護面積分布、Figure 2保護指標のデータソース比較、NoAff・NoBioを使う補足Shapley図、保全地域拡大の追加効果の地域版、双方向農地遷移図、全土地を含むサンキー図、流域保護面積版のFigure 2、PLUM保護区政策入力とCDR収量入力のグリッド地図、AIM-BIO生物多様性指標、流域別の種数と土地変化、Figure 9の加重版
+- `figure_1/`–`figure_10/`：600 dpi PNGとベクターPDF。Figure 1–5と10には本文で引用する数値を1行1値で並べた`figure_N_key_values.csv`（列：`panel`, `quantity`, `comparison`, `region`, `year`, `value`, `unit`）を併せて保存します
+- `supplementary/`：BAU／PROT保護面積分布、Figure 2保護指標のデータソース比較、NoAff・NoBioを使う補足Shapley図、保全地域拡大の追加効果の地域版、双方向農地遷移図、全土地を含むサンキー図、流域保護面積版のFigure 2、PLUM保護区政策入力とCDR収量入力のグリッド地図、AIM-BIO生物多様性指標、流域別の種数・種構成類似度と土地変化、緩和策の有無別の生物多様性効果、AIM/Hubの炭素価格とバイオエネルギー需要、Figure 9の加重版、地域別の作物貿易量と供給収支
 - `source_data/`：各図に使ったCSVまたは圧縮CSV
 - `session_info.txt`：Rとパッケージの実行環境
 
@@ -70,7 +70,7 @@ TARGET_YEAR=2050 Rscript publication/make_main_figures.R
   - `H08_yield_num_gdx.gdx`の`yield_miscanthus_rainfed_num`, `yield_swichgrass_rainfed_num`：天水バイオエネルギー作物収量（kg ha⁻¹ yr⁻¹）
 - `data/AIMBIO/`（AIM-BIOの生物多様性出力。補足図のみに使用）
   - `SPnumber/<run>_LU_Pmig/SPnumber_all_taxon_*.tif`：0.5度グリッドの全分類群種数（`Current`と2030, 2050, 2070, 2090年）
-  - `ComSim/<run>_LU_Pmig/ComSim_all_taxon_*.tif`：同じ構成の種構成類似度
+  - `ComSim/<run>_LU_Pmig/JaccardSimilarity_<run>_<year>_LU.tif`：同じグリッドの現在との種構成類似度（Jaccard、0–1）。`Current`層はない
   - `ESH/ESHI_RegionAgg_<run>-*.csv`：R5地域別の生息適地指数ESHI（2005年比）
   - `<run>`はBAUが`Baseline`、PROTが`PROT_BaU`、MITIが`1100C_CACN_DAC`、MITI_PROTが`PROT_1100C_CACN_DAC`
 
@@ -82,7 +82,7 @@ ALPHAの食料作物は`wht, rce, crl, mze, str, sgr, pls, nut, ocr, vgt, frt, s
 
 `IAMCTempwoU`から次の世界値を抽出し、BAU、MITI、MITI_PROTを比較します。
 
-- Food cropland：`Lan_Cov_Cro_Non_Ene_Cro`
+- Food cropland (incl. fallow)：`Lan_Cov_Cro − Lan_Cov_Cro_Ene_Cro_2nd_gen`。休耕地を含む非エネルギー耕地で、パネルbのFood croplandとFallow croplandの合計に一致します
 - Bioenergy cropland：`Lan_Cov_Cro_Ene_Cro_2nd_gen`
 - Planted forest：`Lan_Cov_Frs_Aff`
 - Natural land：`Lan_Cov_Frs − Lan_Cov_Frs_Aff + Lan_Cov_Oth_Nat_Lan`。植林を除いた森林と他の自然地の合計で、再植林`Lan_Cov_Frs_Ref`は森林側に含まれます。`Lan_Cov_Frs_Aff`は植林開始前の年に報告されないため0として扱います
@@ -164,11 +164,11 @@ T^{\mathrm{PROT}}=\min(1,\ \texttt{protect\_all}+\texttt{serious\_land\_allpolic
 
 MergedComparisonの`Lan_Cov`はモデルが配分する土地面積であり、流域の地理的総面積より小さい場合があるため、分母には使いません。この版では正の追加保護割合を0.5度グリッド上の三分位でLow、Mid、Highに分け、計算された境界を凡例と`supplementary_figure_2_basin_class_thresholds.csv`に記録します。流域値は`supplementary_figure_2_basin_protection_pressure.csv`、分類コードは`supplementary_figure_2_basin_<class>_bivariate_grid.csv.gz`に保存します。
 
-`qlProt_load`はALPHAの保護対象土地タイプ別面積（1000 ha）であり、MergedComparisonの統合保護面積とは定義と集計経路が異なります。`supplementary_figure_2_pressure_source_comparison.*`で両者を同じカラースケールで比較し、対応する流域値を`supplementary_figure_2_pressure_source_comparison.csv`と`supplementary_figure_2_qlprot_pressure.csv`に保存します。
+`qlProt_load`はALPHAの保護対象土地タイプ別面積（1000 ha）であり、MergedComparisonの統合保護面積とは定義と集計経路が異なります。流域・国・地域別の追加保護面積を使う図はすべてMergedComparisonの系列を使い、`qlProt_load`はこの比較図にのみ使います。`supplementary_figure_2_pressure_source_comparison.*`で両者を同じカラースケールで比較し、対応する流域値を`supplementary_figure_2_pressure_source_comparison.csv`と`supplementary_figure_2_qlprot_pressure.csv`に保存します。
 
 ### Supplementary：BAUとPROTの保護面積分布
 
-`supplementary_bau_prot_protection_distribution.*`は、`qlProt_load`を使ってBAU（`000`）とPROT（`100`）の保護面積を流域別に示す4パネル図です。上段は保護面積（Mha）、下段は流域総土地面積に対する割合（%）です。両シナリオの比較可能性を保つため、各段では共通のカラースケールを使っています。追加保護面積（PROT−BAU）も同じCSVに収録しています。
+`supplementary_bau_prot_protection_distribution.*`は、MergedComparisonの流域別`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`を使ってBAU（`000`）とPROT（`100`）の保護面積を流域別に示す4パネル図です。上段は保護面積（Mha）、下段は流域総土地面積に対する割合（%）です。両シナリオの比較可能性を保つため、各段では共通のカラースケールを使っています。追加保護面積（PROT−BAU）も同じCSVに収録しています。
 
 ## Figure 3：食料農地の再配置
 
@@ -226,7 +226,7 @@ class 10（built-up）は現在のNetCDFで0、class 11–12はclass 6–7の内
 F_{kj}=L_k\frac{G_j}{\sum_j G_j}
 \]
 
-です。セルの減少合計と増加合計が一致しない場合は、小さい方の面積だけを配分し、\(L_k\)を\(\min(\sum_k L_k,\sum_j G_j)/\sum_k L_k\)倍に縮めます。区分割合の再スケールは行いません。全セルの\(F_{kj}\)に`pixel_area`を掛けて合計した値がサンキーの帯幅で、単位はmillion haです。同じノードにとどまる面積\(\min(a_k^{011},a_k^{111})\)は描きません。ノード名の括弧内は、左がそのノードから出た面積、右がそのノードに入った面積です。
+です。セルの減少合計と増加合計が一致しない場合は、小さい方の面積だけを配分し、\(L_k\)を\(\min(\sum_k L_k,\sum_j G_j)/\sum_k L_k\)倍に縮めます。区分割合の再スケールは行いません。全セルの\(F_{kj}\)に`pixel_area`を掛けて合計した値がサンキーの帯幅で、単位はmillion haです。`figure_3b_grid_land_totals.csv`の`outflow_mha`と`inflow_mha`は各区分の減少量と増加量の合計、`matched_outflow_mha`と`matched_inflow_mha`は帯に配分された面積（ノードラベルの数値と同じ）、`unmatched_*`はセル内で対応づけられなかった残りです。本文で引用する数値は`matched_*`と`figure_3c_grid_transitions.csv`の流量を使います。未対応分が生じる原因は`doc/plum_netcdf_land_loss_ja.md`にまとめています。同じノードにとどまる面積\(\min(a_k^{011},a_k^{111})\)は描きません。ノード名の括弧内は、左がそのノードから出た面積、右がそのノードに入った面積です。
 
 Natural forestとOther natural landからProtected natural landへの流れは、土地用途は変わらず保護区に指定されただけの面積です。この流れ（約1,300 Mha）は帯幅の大半を占めて用途転換を読めなくするため、パネルcには描かず、`figure_3c_grid_transitions.csv`に`flow_type = new protection`として保存します。Cropland、Bioenergy cropland、Planted forest、Pasture、Restored / abandoned landからProtected natural landへの流れは、用途が自然植生へ戻り、かつ保護区に入った面積なので描き、`flow_type = other source to protected land`とします。Protected natural landから他ノードへ戻る流れは`from protected land`とし、描きません。
 
@@ -274,6 +274,10 @@ AgMIPのCRPについて\(P=A Y\)となるeffective caloric yield \(Y=P/A\)を定
 
 地域図は青いMITI棒と朱色のMITI_PROT棒を地域ごとに並べます。Tradeは主図から除外しています。パネルbの地域版は`supplementary/supplementary_protection_effect_regions.*`に保存します。
 
+### 補足：地域別の作物貿易量
+
+`supplementary/supplementary_regional_trade.*`は、10地域のImports、Exports、Net exports（PJ yr⁻¹）をBAU、MITI、MITI_PROTの水準で並べたものです。本文で欧州の輸入増と純輸出の符号反転を引用する根拠で、数値は`supplementary_regional_trade.csv`に保存します。
+
 ### 補足：土地CDRの構成別にみた保全地域拡大の追加効果
 
 `supplementary/supplementary_protection_effect_cdr_variants.*`は、保全地域拡大の追加効果（拡大なしのシナリオに対する変化率）を緩和策の4条件で比較します。
@@ -296,7 +300,7 @@ AgMIPのCRPについて\(P=A Y\)となるeffective caloric yield \(Y=P/A\)を定
 この図は、緩和策を共通条件にして保護区拡大を追加したときの流域応答を、すべて2100年の`MITI_PROT − MITI`として示します。土地面積と生産量は`data/ALPHA/all_scenario_World.gdx`から読みます。
 
 - 流域総面積：`qlTot_load`
-- 保護面積：`qlProt_load`
+- 保護面積：`data/PLUM/Mergedcomparison.gdx`の流域別`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`（Figure 2と同じ系列）
 - Planted forest：`qlAfr_load`
 - Bioenergy：`qlBas_load`の`ecr`
 - Food harvested area：`qlBas_load`の食料作物13品目
@@ -344,7 +348,7 @@ R_i=100\frac{CONS_{111}-CONS_{011}}{CONS_{011}}-D_i-T_i
 
 国別土地面積は`data/PLUM/Mergedcomparison.gdx`の`IAMCTempwoU`、農業市場はFigure 7と同じAgMIP CRPを使います。2100年の`MITI_PROT − MITI`について、各土地変化をMITIの国土面積`Lan_Cov`で割ります。
 
-- Additional protection：`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`
+- Additional protection：流域別`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`を国ごとに合計した値（国コード単位の同変数はAIM17地域の主要国にしかないため使いません）
 - Planted forest：`Lan_Cov_Frs_Aff`
 - Bioenergy：`Lan_Cov_Cro_Ene_Cro_2nd_gen`
 - Food cropland：`Lan_Cov_Cro_Non_Ene_Cro`
@@ -357,25 +361,35 @@ R_i=100\frac{CONS_{111}-CONS_{011}}{CONS_{011}}-D_i-T_i
 
 ## Figure 9：流域の追加保護と農業・土地応答
 
-横軸は流域の追加保護面積（2100年の`MITI_PROT − MITI`、MITI流域面積に対するpercentage points）で、Figure 6と同じ`data/ALPHA/all_scenario_World.gdx`の`qlProt_load`と`qlTot_load`から計算します。縦軸は6つの応答で、いずれも同じ年の`MITI_PROT − MITI`です。
+横軸は流域の追加保護面積（2100年の`MITI_PROT − MITI`、MITI流域面積に対するpercentage points）で、Figure 2・6と同じMergedComparisonの流域別保護面積と`qlTot_load`の流域総面積から計算します。縦軸は6つの応答で、いずれも同じ年の`MITI_PROT − MITI`です。
 
 - Crop production（%）：Figure 6と同じ食料作物のエネルギー換算生産量の変化率
 - Crop yield（%）：Figure 4と同じ、BAU収穫面積で重み付けした食料作物収量`yldBas_load`の変化率
 - Producer price（%）：`pp_load`（国・品目別生産者価格）を流域のMITI生産量`qsBas_load`で重み付けしたLaspeyres指数の変化率。食料作物`food_crop_codes`のみを使い、価格は国レベルなので流域差は作物構成の差から生じます
-- Import dependence（pp of consumption）：Figure 7のAgMIP CRPによる国別の輸入量／消費量の変化（percentage points）。国の値をその国の全流域に割り当てます
+- Net-import dependence（pp of consumption）：Figure 7のAgMIP CRPによる国別の純輸入量（輸入−輸出）／消費量の変化（percentage points）。国の値をその国の全流域に割り当てます
 - Planted forest、Bioenergy cropland（pp of basin land）：Figure 6と同じ`qlAfr_load`と`qlBas_load`（`ecr`）の変化をMITI流域面積で割った値
 
-点は流域（重み付けなし）、青線は通常最小二乗の回帰直線と95%信頼帯です。各パネルの数値は回帰の傾き（応答の単位／pp）、決定係数、傾きのp値、Spearman順位相関、流域数で、外れ値を切り詰める前の全流域で計算します。表示では縦軸を`symmetric_limit`（絶対値の98パーセンタイル）で切り詰め、外側の点は境界に置きます。数値は`figure_9_basin_protection_responses.csv`と`figure_9_basin_regression_statistics.csv`に保存します。
+点は流域（重み付けなし）、青線は通常最小二乗の回帰直線と95%信頼帯です。回帰直線と各パネルの数値（回帰の傾き（応答の単位／pp）、決定係数、傾きのp値、Spearman順位相関、流域数）は、外れ値を切り詰める前の全流域で計算します。表示では縦軸を`symmetric_limit`（絶対値の98パーセンタイル）で切り詰め、外側の点は境界に置きます。数値は`figure_9_basin_protection_responses.csv`と`figure_9_basin_regression_statistics.csv`に保存します。
 
 これらは記述的な単回帰であり、流域の規模や地域差を調整していません。
 
 ### 加重版（Supplementary）
 
-流域を等しく扱うと、生産量や面積の小さい流域の不安定な変化率が外れ値として回帰と分布を左右します。`supplementary/`には、農業応答（生産量、収量、生産者価格、輸入依存度）をMITI作物生産量`crop_production_pj_011`、土地応答（植林、バイオエネルギー農地）をMITI流域面積`total_land_1000ha_011`で重み付けした3つの版を保存します。数値は加重最小二乗の傾き、決定係数、p値、流域数で、`supplementary_figure_9_weighted_statistics.csv`に保存します。
+流域を等しく扱うと、生産量や面積の小さい流域の不安定な変化率が外れ値として回帰と分布を左右します。`supplementary/`には、農業応答（生産量、収量、生産者価格、純輸入依存度）をMITI作物生産量`crop_production_pj_011`、土地応答（植林、バイオエネルギー農地）をMITI流域面積`total_land_1000ha_011`で重み付けした3つの版を保存します。数値は加重最小二乗の傾き、決定係数、p値、流域数で、`supplementary_figure_9_weighted_statistics.csv`に保存します。
 
 - `supplementary_figure_9_decile_bins.*`：追加保護の10分位ごとに加重平均とブートストラップ95%区間（1000回、`set.seed(20260917)`）を赤で示し、加重回帰直線を青、流域の点を灰色で重ねます。数値は`supplementary_figure_9_decile_bins.csv`
 - `supplementary_figure_9_protection_classes.*`：追加保護の流域3分位（Low／Mid／High、境界は図中に表示）ごとの箱ひげ（重みなし、`symmetric_limit`で切り詰め）と加重平均±95%区間。数値は`supplementary_figure_9_protection_classes.csv`
 - `supplementary_figure_9_bubble.*`：点の面積を重み（パネル内の最大流域を1とする相対値）にしたバブル図と加重回帰直線・95%信頼帯
+
+## Figure 10：国別の保全地域拡大と農業市場応答
+
+横軸はAgMIP対象149か国の追加保護面積（MergedComparisonの流域別`Lan_Cov_Pro_Are_Prm_Sec_Frs_Gra_Int`を国ごとに合計し、MITIの国土面積`Lan_Cov`で割ったpercentage points）、縦軸は2100年の`MITI_PROT − MITI`で、Crop production（%）、Net-import dependence（作物の（輸入−輸出）／消費のpp）、Food intake（作物由来の一人当たりカロリー摂取、%）の3パネルです。Figure 7・8と同じAgMIPの国別データ（`CRP`）を使います。点の面積はMITIの作物生産量（a）、消費量（b）、人口（c）で、青線はその重みによる加重最小二乗の回帰直線と95%信頼帯です。図中の決定係数`R²`とp値（傾きの検定）は加重回帰、Spearman順位相関`rho`は重みなしで、いずれも切り詰め前の149か国で計算します。加重回帰の傾きは`figure_10_country_statistics.csv`にあります。表示では縦軸を2–98パーセンタイルで切り詰め、各パネルの重みが大きい上位10か国にISO3コードを付けます。点の大きさの凡例は各パネルの内側に置きます。数値は`figure_10_country_responses.csv`と`figure_10_country_statistics.csv`に保存します。
+
+回帰は国横断の記述統計であり、因果効果の推定ではありません。
+
+### 補足：地域別の作物供給収支
+
+`supplementary/supplementary_regional_supply_balance.*`は、R10地域ごとに作物消費量の変化（白丸、MITI消費量比%）を国内生産の変化（黄）と純輸入（輸入−輸出）の変化（青）に分けた図です。どちらもMITIの消費量で割ったpercentage pointsで、両者の和が消費量変化に一致します。数値は`supplementary_regional_supply_balance.csv`に保存します。
 
 ## 補足Shapley図
 
@@ -411,19 +425,41 @@ AIM/PLUMに与える0.5度グリッドの入力を、1変数1ファイルで`sup
 | `supplementary_species_richness_<scenario>.*` | BAU、MITI、MITI_PROTの全分類群種数の地図。年は`TARGET_YEAR`以下で最も遅いAIM-BIO出力年（既定では2090年）。3枚で色尺度を共有 |
 | `supplementary_species_richness_MITI_PROT_minus_MITI.*` | 同じ年のMITI_PROTとMITIの種数の差。色尺度の上限は絶対差の98パーセンタイルで対称 |
 | `supplementary_compositional_similarity_*.*` | 種構成類似度について同じ構成の4枚。`ComSim/`にファイルがない場合は出力されない |
-| `supplementary_biodiversity_trajectories.*` | 2030–2090年の各シナリオについて、全陸地セルの平均（実線）と25・75パーセンタイル（破線）の推移。CSVには中央値も保存。指標ごとに1パネル。種数はセルごとの現在比変化 `(NS_future − NS_current) / NS_current` で、負が減少。種構成類似度は現在との類似度そのもので、低いほど種の入れ替わりが大きい。`Current`層で種数が0のセル（氷床と極乾燥地）は統計から除く |
+| `supplementary_biodiversity_trajectories_mean.*`、`_median.*` | 2030–2090年の各シナリオについて、全陸地セルの推移。`_mean`は平均（実線）、`_median`は中央値（実線）と25・75パーセンタイル（破線）。指標ごとに1パネル。種数はセルごとの現在比変化 `(NS_future − NS_current) / NS_current` で、負が減少。種構成類似度は現在との類似度そのもので、低いほど種の入れ替わりが大きい。`Current`層で種数が0のセル（氷床と極乾燥地）は統計から除く |
 | `supplementary_eshi_regions.*` | `ESH.rel2005.geom.Pmigdisp.allspecies`の世界とR5地域別推移（BAU、MITI、MITI_PROT）。ESHIは2005年比の生息適地面積の幾何平均 |
 
 グリッド値は`source_data/supplementary_species_richness_grid.csv.gz`（MITI、MITI_PROT、差分）に、推移は`supplementary_biodiversity_grid_trajectories.csv`と`supplementary_eshi_regions.csv`に保存します。
 
-### 流域別の種数変化と土地変化
+### 流域別の生物多様性変化と土地変化
 
-`supplementary_basin_species_richness.*`は、MITI_PROT − MITIの種数変化を流域で集約し、Figure 6と同じ流域指標と結びます。流域値は、流域内の有効セルについて `(NS_111 − NS_011) / NS_current` をセル面積で加重平均した値（現在種数比、%）です。流域はALPHA流域境界を0.5度グリッドに`touches = TRUE`でラスタ化して割り当てます。土地・生産指標は`build_basin_metrics()`を種数と同じ年（既定では2090年）で評価した値で、Figure 6と同じ定義です。
+`supplementary_basin_species_richness.*`は、MITI_PROT − MITIの種数変化を流域で集約し、Figure 6と同じ流域指標と結びます。セル値は `(NS_111 − NS_011) / NS_current`（現在種数比、%）、流域値は流域内の有効セルのセル面積加重平均です。流域はALPHA流域境界を0.5度グリッドに`touches = TRUE`でラスタ化して割り当てます。土地・生産指標は`build_basin_metrics()`を種数と同じ年（既定では2090年）で評価した値で、Figure 6と同じ定義です。
 
-- パネルa：流域別の種数変化地図（対称尺度、絶対値の98パーセンタイル上限）
+`supplementary_basin_compositional_similarity_mean.*`と`_median.*`は、種構成類似度（Jaccard）について同じ構成の図です。セル値は `100 × (ComSim_111 − ComSim_011)`（類似度のパーセントポイント）で、`_mean`は流域のセル面積加重平均、`_median`はセル面積加重の中央値を流域値とし、散布図には25–75パーセンタイルを縦線で添えます。セル単位の変化は大半が0なので、中央値は平均より0に近くなります。`ComSim/`にファイルがない場合は出力されません。
+
+- パネルa：流域別の変化地図（対称尺度、絶対値の98パーセンタイル上限）
 - パネルb：横軸に追加保護面積、植林、バイオエネルギー農地、食料農地、それらの正味合計（いずれも流域陸地比のpp）、および作物生産変化（%）をとった散布図。点の大きさはMITIの流域陸地面積、青線は単回帰、左上はSpearmanの`rho`と流域数。横軸は各指標の絶対値98パーセンタイルで切り詰めます
 
-数値は`source_data/supplementary_basin_species_richness.csv`に保存します。
+数値は`source_data/supplementary_basin_species_richness.csv`と`supplementary_basin_compositional_similarity_<mean|median>.csv`に保存します。列`change_mean`、`change_median`、`change_q25`、`change_q75`が流域のセル統計量です。
+
+### 保全地域拡大の生物多様性効果（緩和策の有無別）
+
+`supplementary_biodiversity_protection_effect.*`は、Figure 5bと同じ構成で、保全地域拡大の効果を緩和策なし（PROT − BAU）と緩和策あり（MITI_PROT − MITI）で比べます。年はAIM-BIO出力年（既定では2090年）です。
+
+- パネルa：世界の5指標。ESHI（全種、絶滅危惧種`psthspecies`）は`data/AIMBIO/ESH/`の`World`行、BIIは`data/BII/BII/csv/BII_regionagg_<run>_NoCC_LandInt_global2_default_area.csv`の`World`行、種構成類似度と種数は有効セルの平均（種数は現在比変化）。指数は100倍してパーセントポイントで示す
+- パネルb：種構成類似度と種数のセル平均を、Figure 2aの追加保護割合（≤10%、10–30%、>30%）で分けたもの。保護の内側で得た変化と外側で失った変化を分ける
+
+数値は`source_data/supplementary_biodiversity_protection_effect.csv`に保存します。BIIのシナリオ名は`SSP2_BaU`、`SSP2_protect_BaU`、`SSP2_1100C_CACN_DAC`、`SSP2_protect_1100C_CACN_DAC`です。
+
+### AIM/Hubの炭素価格とバイオエネルギー需要
+
+`data/ALPHA/hub_data.gdx`から、PLUMへ渡されるAIM/Hubの炭素価格`Prc_car_hub`と第2世代バイオエネルギー作物需要`QENE_hub`を年次で示します。どちらもPLUMにとって外生なので、PROT系シナリオは保護なしの対応シナリオと同じ値になり、図には描きません。
+
+`supplementary_hub_inputs.*`の1枚にまとめます。
+
+- パネルa：炭素価格（USD/t CO2）。`Prc_car_hub`は全国で同一なので国平均を世界値とする。MITIの1本。BAUは炭素価格がなくGDXに含まれない。通貨の基準年はGDXに記載がない
+- パネルb：第2世代バイオエネルギー作物需要（Mt）。Hubの17地域でファセットし、縦軸は地域ごとに自由。BAUとMITIの2本。`QENE_hub`は`all_scenario_World.gdx`の`qdBio_load`の`ecr`と一致するので、単位を1000 tとみなして1000で割る
+
+数値は`source_data/supplementary_hub_carbon_price.csv`と`supplementary_hub_bioenergy_demand.csv`に保存します。
 
 ## 解釈上の注意
 
