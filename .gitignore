@@ -3,3 +3,5 @@ output/
 output*/
 data*/
 plot/
+*.log
+*Zone.Identifier

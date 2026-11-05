@@ -1,0 +1,175 @@
+crop_res_dir    .   CRS
+crop_res_ind    .   CRS
+crop_res_bun    .   BCR
+rce_clt         .   RCC
+syn_fert_dir    .   SFR
+syn_fert_ind_lch.   SFR
+syn_fert_ind_vol.   SFR
+ent             .   ENT
+man_man         .   MMG
+man_man_dir     .   MMG
+man_man_ind     .   MMG
+man_lft_dir     .   MGR
+man_lft_ind_lch .   MGR
+man_lft_ind_vol .   MGR
+man_apl_dir     .   MAS
+man_apl_ind_lch .   MAS
+man_apl_ind_vol .   MAS
+cro_drn_org_sol     .   ORS
+pas_drn_org_sol     .   ORS
+svn_fir         .   BSV
+
+crop_res_dir    .   ManagedSoils
+crop_res_ind    .   ManagedSoils
+syn_fert_dir    .   ManagedSoils
+syn_fert_ind_lch.   ManagedSoils
+syn_fert_ind_vol.   ManagedSoils
+ent             .   LSP
+man_man         .   LSP
+man_man_dir     .   LSP
+man_man_ind     .   LSP
+man_lft_dir     .   ManagedSoils
+man_lft_ind_lch .   ManagedSoils
+man_lft_ind_vol .   ManagedSoils
+man_apl_dir     .   ManagedSoils
+man_apl_ind_lch .   ManagedSoils
+man_apl_ind_vol .   ManagedSoils
+cro_drn_org_sol     .   Cropland
+pas_drn_org_sol     .   Pasture
+svn_fir         .   GrassBurning
+frs_fir         .   ForestBurning
+oth_fir         .   PeatBurning
+* Crop residue burning sits inside the FAOSTAT agriculture total, so Biomass
+* Burning carries only the fires outside it and Aggregate stays a clean sum.
+svn_fir         .   BiomassBurning
+frs_fir         .   BiomassBurning
+oth_fir         .   BiomassBurning
+frs             .   Forest
+frs_cov         .   ForestConversion
+afr             .   Forestation
+
+crop_res_dir    .   AGR
+crop_res_ind    .   AGR
+crop_res_bun    .   AGR
+rce_clt         .   AGR
+syn_fert_dir    .   AGR
+syn_fert_ind_lch.   AGR
+syn_fert_ind_vol.   AGR
+ent             .   AGR
+man_man         .   AGR
+man_man_dir     .   AGR
+man_man_ind     .   AGR
+man_lft_dir     .   AGR
+man_lft_ind_lch .   AGR
+man_lft_ind_vol .   AGR
+man_apl_dir     .   AGR
+man_apl_ind_lch .   AGR
+man_apl_ind_vol .   AGR
+cro_drn_org_sol     .   LAN
+pas_drn_org_sol     .   LAN
+svn_fir         .   LAN
+frs_fir         .   LAN
+oth_fir         .   LAN
+frs             .   LAN
+frs_cov         .   LAN
+afr             .   LAN
+
+crop_res_dir    .   TOT
+crop_res_ind    .   TOT
+crop_res_bun    .   TOT
+rce_clt         .   TOT
+syn_fert_dir    .   TOT
+syn_fert_ind_lch.   TOT
+syn_fert_ind_vol.   TOT
+ent             .   TOT
+man_man         .   TOT
+man_man_dir     .   TOT
+man_man_ind     .   TOT
+man_lft_dir     .   TOT
+man_lft_ind_lch .   TOT
+man_lft_ind_vol .   TOT
+man_apl_dir     .   TOT
+man_apl_ind_lch .   TOT
+man_apl_ind_vol .   TOT
+cro_drn_org_sol     .   TOT
+pas_drn_org_sol     .   TOT
+svn_fir         .   TOT
+frs_fir         .   TOT
+oth_fir         .   TOT
+frs             .   TOT
+frs_cov         .   TOT
+afr             .   TOT
+
+"3.A.1" .   ENT
+"3.A.2" .   MMG
+"3.C.1" .   BCR
+"3.C.2" .   SFR
+"3.C.3" .   SFR
+"3.C.4" .   ORS
+"3.C.5" .   ORS
+"3.C.6" .   MAS
+"3.C.7" .   RCC
+
+"3.A.1" .   LSP
+"3.A.2" .   LSP
+"3.C.1" .   BiomassBurning
+"3.C.2" .   ManagedSoils
+"3.C.3" .   ManagedSoils
+"3.C.4" .   ManagedSoils
+"3.C.5" .   ManagedSoils
+"3.C.6" .   ManagedSoils
+
+"3.A.1" .   AGR
+"3.A.2" .   AGR
+"3.C.1" .   AGR
+"3.C.2" .   AGR
+"3.C.3" .   AGR
+"3.C.4" .   AGR
+"3.C.5" .   AGR
+"3.C.6" .   AGR
+"3.C.7" .   AGR
+
+* "3.A.1" .   TOT
+* "3.A.2" .   TOT
+* "3.C.1" .   TOT
+* "3.C.2" .   TOT
+* "3.C.3" .   TOT
+* "3.C.4" .   TOT
+* "3.C.5" .   TOT
+* "3.C.6" .   TOT
+* "3.C.7" .   TOT
+
+"3.A" .   ENT
+"3.A" .   MMG
+"M.AG.ELV" .   BCR
+"M.AG.ELV" .   SFR
+"M.AG.ELV" .   ORS
+"M.AG.ELV" .   MAS
+"M.AG.ELV" .   RCC
+
+"3.A" .   LSP
+"M.AG.ELV" .   ManagedSoils
+
+"3.A" .   AGR
+"M.AG.ELV" .   AGR
+"M.LULUCF" .   LAN
+
+"3.A" .   TOT
+"M.AG.ELV" .   TOT
+"M.LULUCF" .   TOT
+
+"Net" .   LULUCF
+"deforestation (total)" .   Deforestation
+"forest regrowth (total)" .   Forestation
+"other transitions" .   ForestOther
+"peat drainage & peat fires" .   OrganicSoils
+"wood harvest & other forest management" .   ForestManagement
+
+"deforestation (total)" .   TOT
+"forest regrowth (total)" .   TOT
+"other transitions" .   TOT
+"peat drainage & peat fires" .   TOT
+"wood harvest & other forest management" .   TOT
+
+"forest regrowth (total)" .   ForestLand
+"wood harvest & other forest management" .   ForestLand
