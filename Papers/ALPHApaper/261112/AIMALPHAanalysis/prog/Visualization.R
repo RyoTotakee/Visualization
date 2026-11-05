@@ -393,6 +393,7 @@ Historical <- full_join(Historical, EDGAR_data) %>%
                                   "Lan_Cov_Cro" = "LAND_CRP",
                                   "Lan_Cov_Frs" = "LAND_FOR",
                                   "Lan_Cov_Pst" = "LAND_GRS",
+                                  "Lan_Cov_Oth_Nat" = "LAND_ONV",
                                   "Emi_CH4_AFO" = "ECH4_TOT",
                                   "Emi_N2O_AFO" = "EN2O_TOT"
   )) %>%
@@ -421,17 +422,17 @@ data_7 <- full_join(data_7, Historical) %>%
                                   "LAND_CRP" = "Cropland [million ha]",
                                   "LAND_FOR" = "Forest [million ha]",
                                   "LAND_GRS" = "Pasture [million ha]",
+                                  "LAND_ONV" = "Other natural land [million ha]",
                                   "ECH4_TOT" = "CH4 emission [Mt CH4/yr]",
                                   "EN2O_TOT" = "N2O emission [kt N2O/yr]"
   ))
-VAR_list <- c("Crop Consumption [million t-DM]", "Livestock Consumption [million t-DM]", "Crop Production [million t-DM]", 
-              "Livestock Production [million t-DM]", "Cropland [million ha]", "Forest [million ha]", "Pasture [million ha]", 
+VAR_list <- c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]",
+              "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]",
+              "Cropland [million ha]", "Pasture [million ha]", "Forest [million ha]", "Other natural land [million ha]",
               "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]")
 data_7 <- data_7 %>%
   filter(VARIABLE %in% VAR_list) %>%
-  mutate(VARIABLE = factor(VARIABLE, levels = c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]", "Cropland [million ha]", 
-                                                "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]", "Pasture [million ha]", 
-                                                "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]", "Forest [million ha]"))) %>%
+  mutate(VARIABLE = factor(VARIABLE, levels = VAR_list)) %>%
   mutate(region = dplyr::recode(region,
                                 "R5ASIA" = "Asia",
                                 "R5LAM" = "Latin America and the Caribbean",
@@ -514,7 +515,7 @@ g7 <- ggplot() +
     name = "AIM-ALPHA"
   ) +
   
-  facet_wrap(vars(VARIABLE), scales = "free_y") +
+  facet_wrap(vars(VARIABLE), scales = "free_y", ncol = 4) +
   scale_x_continuous(breaks = seq(2000, 2100, 20)) +
   scale_y_continuous(limits = c(0, NA)) +
   labs(x = "Year", y = "") +
@@ -522,21 +523,25 @@ g7 <- ggplot() +
   theme(
     axis.title.y = element_blank(),
     # legend.box = "vertical"
-    legend.box = "horizontal"
+    legend.box = "horizontal",
+    legend.position = "inside",
+    legend.position.inside = c(0.76, 0.16),
+    legend.justification.inside = c(0.5, 0.5),
+    legend.box.just = "top"
   ) +
   guides(
     color = guide_legend(
-      order = 2, nrow = 2, byrow = TRUE,
+      order = 2, ncol = 1,
       override.aes = list(linetype = 0, linewidth = 0, alpha = 1)
     ),
-    shape = guide_legend(order = 2, nrow = 2, byrow = TRUE),
+    shape = guide_legend(order = 2, ncol = 1),
     fill  = guide_legend(order = 3, override.aes = list(alpha = 0.3)),
     linetype = guide_legend(
       order = 1,
       override.aes = list(color = c(backcast_color, Model_color["AIM-ALPHA"]), linewidth = 1.2, alpha = 1)
     )
   )
-ggsave(paste0(Fig_dir, "Fig7.png"), g7, width = 15, height = 10, dpi = 300)
+ggsave(paste0(Fig_dir, "Fig7.png"), g7, width = 19, height = 10, dpi = 300)
 
 print("Fig7:")
 increase_summary <- data_7_r %>%
@@ -616,17 +621,21 @@ data8 <- full_join(SSP_agr, data8) %>%
                                   "LAND_CRP" = "Cropland [million ha]",
                                   "LAND_FOR" = "Forest [million ha]",
                                   "LAND_GRS" = "Pasture [million ha]",
+                                  "LAND_ONV" = "Other natural land [million ha]",
                                   "ECH4_TOT" = "CH4 emission [Mt CH4/yr]",
                                   "EN2O_TOT" = "N2O emission [kt N2O/yr]"
   ))
-VAR_list <- c("Crop Consumption [million t-DM]", "Livestock Consumption [million t-DM]", "Crop Production [million t-DM]", 
-              "Livestock Production [million t-DM]", "Cropland [million ha]", "Forest [million ha]", "Pasture [million ha]", 
+VAR_list <- c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]",
+              "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]",
+              "Cropland [million ha]", "Pasture [million ha]", "Forest [million ha]", "Other natural land [million ha]",
               "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]")
+VAR_label <- c("Crop \nConsumption \n[million t-DM]", "Crop \nProduction \n[million t-DM]",
+               "Livestock \nConsumption \n[million t-DM]", "Livestock \nProduction \n[million t-DM]",
+               "Cropland \n[million ha]", "Pasture \n[million ha]", "Forest \n[million ha]", "Other natural \nland \n[million ha]",
+               "CH4 emission \n[Mt CH4/yr]", "N2O emission \n[kt N2O/yr]")
 data8 <- data8 %>%
   filter(VARIABLE %in% VAR_list) %>%
-  mutate(VARIABLE = factor(VARIABLE, levels = c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]", 
-                                                "Cropland [million ha]", "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]", 
-                                                "Pasture [million ha]", "Forest [million ha]", "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]"))) %>%
+  mutate(VARIABLE = factor(VARIABLE, levels = VAR_list)) %>%
   mutate(region = dplyr::recode(region,
                                 "R5ASIA" = "Asia",
                                 "R5LAM" = "Latin America and the Caribbean",
@@ -635,9 +644,7 @@ data8 <- data8 %>%
                                 "R5REF" = "Eastern Europe and the Former Soviet Union"
   ))
 region_list <- unique(data8$region)
-levels(data8$VARIABLE) <- c("Crop \nConsumption \n[million t-DM]", "Crop \nProduction \n[million t-DM]", "Cropland \n[million ha]", 
-                            "Livestock \nConsumption \n[million t-DM]", "Livestock \nProduction \n[million t-DM]", "Pasture \n[million ha]", 
-                            "Forest \n[million ha]", "CH4 emission \n[Mt CH4/yr]", "N2O emission \n[kt N2O/yr]")
+levels(data8$VARIABLE) <- VAR_label
 data8 <- data8 %>% pivot_wider(names_from = "MODEL", values_from = "AGMIP_agg")
 data8$IAM_max <- apply(data8[, 5:9], 1, max, na.rm = T)
 data8$IAM_min <- apply(data8[, 5:9], 1, min, na.rm = T)
@@ -647,6 +654,7 @@ data8_AgLU <- data8 %>%
 data8_IAM <- data8 %>%
   dplyr::select(SCENARIO, VARIABLE, region, Y, IAM_max, IAM_min) %>%
   na.omit() %>%
+  filter(is.finite(IAM_max), is.finite(IAM_min)) %>%
   filter(Y %in% seq(2010, 2100, 10))
 data8_FAOSTAT <- FAOSTAT %>%
   mutate(
@@ -681,7 +689,7 @@ data8_EDGAR <- EDGAR %>%
   ))
 data8_Historical <- full_join(data8_FAOSTAT, data8_LUH2)
 data8_Historical <- full_join(data8_Historical, data8_EDGAR) %>%
-  filter(Y > 2000, Y < 2021, region %in% c("World", "R5ASIA", "R5LAM", "R5MAF", "R5OECD90+EU", "R5REF")) %>%
+  filter(Y > 2000, Y < 2025, region %in% c("World", "R5ASIA", "R5LAM", "R5MAF", "R5OECD90+EU", "R5REF")) %>%
   mutate(VARIABLE = dplyr::recode(VARIABLE,
                                   "Agr_Dem_Cro" = "Crop Consumption [million t-DM]",
                                   "Agr_Dem_Liv" = "Livestock Consumption [million t-DM]",
@@ -690,13 +698,12 @@ data8_Historical <- full_join(data8_Historical, data8_EDGAR) %>%
                                   "Lan_Cov_Cro" = "Cropland [million ha]",
                                   "Lan_Cov_Frs" = "Forest [million ha]",
                                   "Lan_Cov_Pst" = "Pasture [million ha]",
+                                  "Lan_Cov_Oth_Nat" = "Other natural land [million ha]",
                                   "Emi_CH4_AFO" = "CH4 emission [Mt CH4/yr]",
                                   "Emi_N2O_AFO" = "N2O emission [kt N2O/yr]"
   )) %>%
   filter(VARIABLE %in% VAR_list) %>%
-  mutate(VARIABLE = factor(VARIABLE, levels = c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]", "Cropland [million ha]", 
-                                                "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]", "Pasture [million ha]", 
-                                                "Forest [million ha]", "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]"))) %>%
+  mutate(VARIABLE = factor(VARIABLE, levels = VAR_list)) %>%
   mutate(region = dplyr::recode(region,
                                 "R5ASIA" = "Asia",
                                 "R5LAM" = "Latin America and the Caribbean",
@@ -704,9 +711,7 @@ data8_Historical <- full_join(data8_Historical, data8_EDGAR) %>%
                                 "R5OECD90+EU" = "OECD+EU",
                                 "R5REF" = "Eastern Europe and the Former Soviet Union"
   ))
-levels(data8_Historical$VARIABLE) <- c("Crop \nConsumption \n[million t-DM]", "Crop \nProduction \n[million t-DM]", "Cropland \n[million ha]", 
-                                       "Livestock \nConsumption \n[million t-DM]", "Livestock \nProduction \n[million t-DM]", "Pasture \n[million ha]", 
-                                       "Forest \n[million ha]", "CH4 emission \n[Mt CH4/yr]", "N2O emission \n[kt N2O/yr]")
+levels(data8_Historical$VARIABLE) <- VAR_label
 
 r <- "World"
 data8_AgLU_r <- data8_AgLU %>% filter(region == r)
@@ -726,13 +731,13 @@ g8_1 <- data8_AgLU_r %>%
     aes(x = Y, y = AgLU, color = SCENARIO, group = SCENARIO),
     linewidth = 1, show.legend = FALSE
   ) +
-  facet_wrap(vars(VARIABLE), scales = "free_y", nrow = 9) +
+  facet_wrap(vars(VARIABLE), scales = "free_y", nrow = 10) +
   scale_color_manual(values = Scenario_color) +
   scale_linetype_manual(values = projection_linetype) +
-  scale_x_continuous(breaks = seq(2020, 2100, 20)) +
+  scale_x_continuous(breaks = seq(2000, 2100, 20), limits = c(2000, 2100)) +
   labs(x = "Year", y = "") +
   theme_3 +
-  theme(legend.position = "none", axis.title.y = element_blank(), strip.text = element_blank())
+  theme(legend.position = "none", axis.title.y = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(14, "pt"), axis.text.x = element_text(size = 14, angle = 45, hjust = 1))
 g8_2 <- ggplot() +
   geom_line(
     data = data8_AgLU_r_backcast,
@@ -744,21 +749,33 @@ g8_2 <- ggplot() +
     aes(x = Y, y = AgLU, color = SCENARIO, group = SCENARIO),
     linewidth = 1.2, show.legend = c(color = TRUE, linetype = FALSE, shape = FALSE)
   ) +
-  geom_ribbon(data = data8_IAM_r, aes(x = Y, ymax = IAM_max, ymin = IAM_min, fill = "#777777"), alpha = 0.2) +
-  geom_point(data = data8_Historical_r, aes(x = Y, y = Historical, shape = Model2), color = "#777777", size = 3, show.legend = c(shape = TRUE, color = FALSE, linetype = FALSE)) +
+  geom_ribbon(data = data8_IAM_r, aes(x = Y, ymax = IAM_max, ymin = IAM_min), fill = "grey50", alpha = 0.2) +
+  geom_line(
+    data = data8_Historical_r,
+    aes(x = Y, y = Historical, group = Model2),
+    linewidth = 0.6, linetype = "dotdash", show.legend = FALSE
+  ) +
+  geom_ribbon(
+    data = data8_Historical_r,
+    aes(x = Y, ymin = Historical * 0.9, ymax = Historical * 1.1, fill = Model2),
+    alpha = 0.4
+  ) +
   facet_grid(VARIABLE ~ SCENARIO, scales = "free") +
   scale_color_manual(values = Scenario_color) +
-  scale_fill_manual(values = Scenario_color) +
-  scale_shape_manual(values = model_shape) +
+  scale_fill_manual(
+    values = c(hist_fill),
+    breaks = c(names(hist_fill)),
+    name = "Historical"
+  ) +
   scale_linetype_manual(
     values = projection_linetype,
     breaks = names(projection_linetype),
     name = "AIM-ALPHA"
   ) +
-  scale_x_continuous(breaks = seq(2020, 2100, 20)) +
+  scale_x_continuous(breaks = seq(2000, 2100, 20), limits = c(2000, 2100)) +
   labs(x = "Year", y = "") +
   theme_1 +
-  theme(axis.title.y = element_blank()) +
+  theme(axis.title.y = element_blank(), panel.spacing.y = unit(14, "pt"), axis.text.x = element_text(size = 14, angle = 45, hjust = 1)) +
   guides(
     color = guide_legend(
       order = 2,
@@ -768,13 +785,13 @@ g8_2 <- ggplot() +
       order = 1,
       override.aes = list(color = backcast_color, linewidth = 1.05, shape = NA)
     ),
-    shape = guide_legend(
+    fill = guide_legend(
       order = 3,
-      override.aes = list(color = "#777777", linetype = 0, linewidth = 0)
+      override.aes = list(color = NA, linetype = 0, linewidth = 0, alpha = 0.4)
     )
   )
 g_fig8 <- g8_1 + g8_2 + plot_layout(widths = c(1, 4))
-ggsave(paste0(Fig_dir, "Fig8.png"), g_fig8, width = 24, height = 18, dpi=300)
+ggsave(paste0(Fig_dir, "Fig8.png"), g_fig8, width = 24, height = 18.5, dpi=300)
 
 print("Fig8:")
 increase_summary <- data8_AgLU %>%
@@ -872,6 +889,7 @@ Historical <- full_join(Historical, EDGAR_9) %>%
                                   "Lan_Cov_Cro" = "LAND_CRP",
                                   "Lan_Cov_Frs" = "LAND_FOR",
                                   "Lan_Cov_Pst" = "LAND_GRS",
+                                  "Lan_Cov_Oth_Nat" = "LAND_ONV",
                                   "Emi_CH4_AFO" = "ECH4_TOT",
                                   "Emi_N2O_AFO" = "EN2O_TOT"
   )) %>%
@@ -907,11 +925,18 @@ data_9 <- full_join(data_9, Historical) %>%
                                   "LAND_CRP" = "Cropland [million ha]",
                                   "LAND_FOR" = "Forest [million ha]",
                                   "LAND_GRS" = "Pasture [million ha]",
+                                  "LAND_ONV" = "Other natural land [million ha]",
                                   "ECH4_TOT" = "CH4 emission [Mt CH4/yr]",
                                   "EN2O_TOT" = "N2O emission [kt N2O/yr]"
   ))
-VAR_list <- c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]", "Cropland [million ha]", "Livestock Consumption [million t-DM]", 
-              "Livestock Production [million t-DM]", "Pasture [million ha]", "Forest [million ha]", "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]")
+VAR_list <- c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]",
+              "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]",
+              "Cropland [million ha]", "Pasture [million ha]", "Forest [million ha]", "Other natural land [million ha]",
+              "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]")
+VAR_label <- c("Crop \nConsumption \n[million \nt-DM]", "Crop \nProduction \n[million \nt-DM]",
+               "Livestock \nConsumption \n[million \nt-DM]", "Livestock \nProduction \n[million \nt-DM]",
+               "Cropland \n[million ha]", "Pasture \n[million ha]", "Forest \n[million ha]", "Other \nnatural land \n[million ha]",
+               "CH4 emission \n[Mt CH4/yr]", "N2O emission \n[kt N2O/yr]")
 
 data_9 <- data_9 %>%
   filter(VARIABLE %in% VAR_list) %>%
@@ -944,9 +969,7 @@ data_9 <- data_9 %>%
   filter(Y <= 2030)%>%
   dplyr::filter(region != "World")
 
-levels(data_9$VARIABLE) <- c("Crop \nConsumption \n[million t-DM]", "Crop \nProduction \n[million t-DM]", "Cropland \n[million ha]", 
-                             "Livestock \nConsumption \n[million t-DM]", "Livestock \nProduction \n[million t-DM]", "Pasture \n[million ha]", 
-                             "Forest \n[million ha]", "CH4 emission \n[Mt CH4/yr]", "N2O emission \n[kt N2O/yr]")
+levels(data_9$VARIABLE) <- VAR_label
 
 region_list <- unique(data_9$region)
 data_9_r <- data_9  %>%
@@ -1017,7 +1040,7 @@ g_9 <- ggplot() +
   theme_1 +
   theme(
     axis.text.y = element_text(size = 12),
-    strip.text.y = element_text(size = 14, lineheight = 0.95)
+    strip.text.y = element_text(size = 13, lineheight = 0.95)
   ) +
   guides(
     fill = guide_legend(
@@ -1034,7 +1057,7 @@ g_9 <- ggplot() +
     )
   )
 
-ggsave(paste0(Fig_dir, "Fig9.png"), g_9, width = 16, height = 14, dpi = 300)
+ggsave(paste0(Fig_dir, "Fig9.png"), g_9, width = 16, height = 14.5, dpi = 300)
 
 
 # Fig.10 --------------------------------------------------- 
@@ -1334,7 +1357,7 @@ data_11_IAMC <- full_join(data_11_IAMC, SSP_agr_range)
 data_11_IAMC <- full_join(data_11_IAMC, data_11_Historical)
 data_11 <- data_11_IAMC %>%
   filter(region == "World") %>%
-  filter(variable %in% c("AGR_DEM_CRO", "AGR_DEM_LIV", "AGR_PRO_CRO", "AGR_PRO_LIV", "LAN_COV_CRO", "LAN_COV_PST", "LAN_COV_FRS", "EMI_CH4_AFO", "EMI_N2O_AFO")) %>%
+  filter(variable %in% c("AGR_DEM_CRO", "AGR_DEM_LIV", "AGR_PRO_CRO", "AGR_PRO_LIV", "LAN_COV_CRO", "LAN_COV_PST", "LAN_COV_FRS", "LAN_COV_OTH_NAT", "EMI_CH4_AFO", "EMI_N2O_AFO")) %>%
   mutate(variable = dplyr::recode(variable,
                                   "AGR_DEM_CRO" = "Crop Consumption [million t-DM]",
                                   "AGR_DEM_LIV" = "Livestock Consumption [million t-DM]",
@@ -1343,12 +1366,14 @@ data_11 <- data_11_IAMC %>%
                                   "LAN_COV_CRO" = "Cropland [million ha]",
                                   "LAN_COV_FRS" = "Forest [million ha]",
                                   "LAN_COV_PST" = "Pasture [million ha]",
+                                  "LAN_COV_OTH_NAT" = "Other natural land [million ha]",
                                   "EMI_CH4_AFO" = "CH4 emission [Mt CH4/yr]",
                                   "EMI_N2O_AFO" = "N2O emission [kt N2O/yr]"
   )) %>%
-  mutate(variable = factor(variable, levels = c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]", "Cropland [million ha]", 
-                                                "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]", "Pasture [million ha]", 
-                                                "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]", "Forest [million ha]")))
+  mutate(variable = factor(variable, levels = c("Crop Consumption [million t-DM]", "Crop Production [million t-DM]",
+                                                "Livestock Consumption [million t-DM]", "Livestock Production [million t-DM]",
+                                                "Cropland [million ha]", "Pasture [million ha]", "Forest [million ha]", "Other natural land [million ha]",
+                                                "CH4 emission [Mt CH4/yr]", "N2O emission [kt N2O/yr]")))
 data_line_aim <- data_11 %>%
   filter(Model == "AIM-ALPHA") %>%
   dplyr::select(SCENARIO, variable, region, Y, Value) %>%
@@ -1418,25 +1443,29 @@ g_11 <- ggplot() +
   ) +
   scale_linewidth_manual(values = Model_line, guide = "none") +
   
-  facet_wrap(vars(variable), scales = "free_y") +
+  facet_wrap(vars(variable), scales = "free_y", ncol = 4) +
   scale_x_continuous(breaks = seq(2000, 2100, 20)) +
   labs(x = "Year", y = "") +
   theme_1 +
   theme(
     axis.title.y  = element_blank(),
-    legend.box    = "horizontal" 
+    legend.box    = "horizontal",
+    legend.position = "inside",
+    legend.position.inside = c(0.76, 0.16),
+    legend.justification.inside = c(0.5, 0.5),
+    legend.box.just = "top"
   ) +
   guides(
     color = guide_legend(
-      order = 1, nrow = 2, byrow = TRUE,
+      order = 1, ncol = 1,
       override.aes = list(shape = NA, linewidth = 1.3, alpha = 1)
     ),
     linetype = guide_legend(
-      order = 1,
+      order = 1, ncol = 1,
       override.aes = list(shape = NA, linewidth = 1.3, alpha = 1)
     ),
     shape = guide_legend(
-      order = 2, nrow = 2, byrow = TRUE,
+      order = 2, ncol = 1,
       override.aes = list(linetype = 0, linewidth = 0, alpha = 1)
     ),
     fill = guide_legend(
@@ -1450,7 +1479,7 @@ g_11 <- ggplot() +
       )
     )
   )
-ggsave(paste0(Fig_dir, "Fig11.png"),  g_11, width = 15, height = 10, dpi=300)
+ggsave(paste0(Fig_dir, "Fig11.png"),  g_11, width = 19, height = 10, dpi=300)
 
 print("Fig11:")
 increase_summary <- data_line_aim %>%
