@@ -1,0 +1,1349 @@
+*asterisks for map	*ISO		AIM17
+	AFG	.	XSA
+	ALB	.	XER
+	DZA	.	XNF
+	ASM	.	XSA
+	AND	.	XER
+	AGO	.	XAF
+	ATG	.	XLM
+	ARG	.	XLM
+	ARM	.	CIS
+	ABW	.	XLM
+	AUS	.	XOC
+	AUT	.	XE25
+	AZE	.	CIS
+	BHS	.	XLM
+	BHR	.	XME
+	BGD	.	XSA
+	BRB	.	XLM
+	BLR	.	CIS
+	BEL	.	XE25
+	BLZ	.	XLM
+	BEN	.	XAF
+	BMU	.	XLM
+	BTN	.	XSA
+	BOL	.	XLM
+	BIH	.	XER
+	BWA	.	XAF
+	BRA	.	BRA
+	VGB	.	XLM
+	BRN	.	XSA
+	BGR	.	XER
+	BFA	.	XAF
+	BDI	.	XAF
+	CPV	.	XAF
+	KHM	.	XSE
+	CMR	.	XAF
+	CAN	.	CAN
+	CYM	.	XLM
+	CAF	.	XAF
+	TCD	.	XAF
+*	CHI	.	
+	CHL	.	XLM
+	CHN	.	CHN
+	COL	.	XLM
+	COM	.	XAF
+	COD	.	XAF
+	COG	.	XAF
+	CRI	.	XLM
+	CIV	.	XAF
+	HRV	.	XER
+	CUB	.	XLM
+*	CUW	.	
+	CYP	.	XE25
+	CZE	.	XE25
+	DNK	.	XE25
+	DJI	.	XAF
+	DMA	.	XLM
+	DOM	.	XLM
+	ECU	.	XLM
+	EGY	.	XNF
+	SLV	.	XLM
+	GNQ	.	XAF
+	ERI	.	XAF
+	EST	.	XE25
+	SWZ	.	XAF
+	ETH	.	XAF
+	FRO	.	XER
+	FJI	.	XSA
+	FIN	.	XE25
+	FRA	.	XE25
+	PYF	.	XSA
+	GAB	.	XAF
+	GMB	.	XAF
+	GEO	.	CIS
+	DEU	.	XE25
+	GHA	.	XAF
+	GIB	.	XER
+	GRC	.	XE25
+	GRL	.	XLM
+	GRD	.	XLM
+	GUM	.	XSA
+	GTM	.	XLM
+	GIN	.	XAF
+	GNB	.	XAF
+	GUY	.	XLM
+	HTI	.	XLM
+	HND	.	XLM
+	HKG	.	CHN
+	HUN	.	XE25
+	ISL	.	XER
+	IND	.	IND
+	IDN	.	XSE
+	IRN	.	XME
+	IRQ	.	XME
+	IRL	.	XE25
+*	IMN	.	
+	ISR	.	XME
+	ITA	.	XE25
+	JAM	.	XLM
+	JPN	.	JPN
+	JOR	.	XME
+	KAZ	.	CIS
+	KEN	.	XAF
+	KIR	.	XSA
+	PRK	.	XSE
+	KOR	.	XSE
+*	XKX	.	
+	KWT	.	XME
+	KGZ	.	CIS
+	LAO	.	XSE
+	LVA	.	XE25
+	LBN	.	XME
+	LSO	.	XAF
+	LBR	.	XAF
+	LBY	.	XNF
+	LIE	.	XER
+	LTU	.	XE25
+	LUX	.	XE25
+	MAC	.	CHN
+	MDG	.	XAF
+	MWI	.	XAF
+	MYS	.	XSE
+	MDV	.	XSA
+	MLI	.	XAF
+	MLT	.	XE25
+	MHL	.	XSA
+	MRT	.	XAF
+	MUS	.	XAF
+	MEX	.	XLM
+	FSM	.	XSA
+	MDA	.	CIS
+	MCO	.	XER
+	MNG	.	XSE
+	MNE	.	XER
+	MAR	.	XNF
+	MOZ	.	XAF
+	MMR	.	XSE
+	NAM	.	XAF
+	NRU	.	XSA
+	NPL	.	XSA
+	NLD	.	XE25
+	NCL	.	XSA
+	NZL	.	XOC
+	NIC	.	XLM
+	NER	.	XAF
+	NGA	.	XAF
+	MKD	.	XER
+	MNP	.	XSA
+	NOR	.	XER
+	OMN	.	XME
+	PAK	.	XSA
+	PLW	.	XSA
+	PAN	.	XLM
+	PNG	.	XSA
+	PRY	.	XLM
+	PER	.	XLM
+	PHL	.	XSE
+	POL	.	XE25
+	PRT	.	XE25
+	PRI	.	XLM
+	QAT	.	XME
+	ROU	.	XER
+	RUS	.	CIS
+	RWA	.	XAF
+	WSM	.	XSA
+	SMR	.	XER
+	STP	.	XAF
+	SAU	.	XME
+	SEN	.	XAF
+	SRB	.	XER
+	SYC	.	XAF
+	SLE	.	XAF
+	SGP	.	XSE
+*	SXM	.	
+	SVK	.	XE25
+	SVN	.	XE25
+	SLB	.	XSA
+	SOM	.	XAF
+	ZAF	.	XAF
+	SSD	.	XAF
+	ESP	.	XE25
+	LKA	.	XSA
+	KNA	.	XLM
+	LCA	.	XLM
+*	MAF	.	
+	VCT	.	XLM
+	SDN	.	XAF
+	SUR	.	XLM
+	SWE	.	XE25
+	CHE	.	XER
+	SYR	.	XME
+	TJK	.	CIS
+	TZA	.	XAF
+	THA	.	XSE
+	TLS	.	XSE
+	TGO	.	XAF
+	TON	.	XSA
+	TTO	.	XLM
+	TUN	.	XNF
+	TUR	.	TUR
+	TKM	.	CIS
+	TCA	.	XLM
+	TUV	.	XSA
+	UGA	.	XAF
+	UKR	.	CIS
+	ARE	.	XME
+	GBR	.	XE25
+	USA	.	USA
+	URY	.	XLM
+	UZB	.	CIS
+	VUT	.	XSA
+	VEN	.	XLM
+	VNM	.	XSE
+	VIR	.	XLM
+	PSE	.	XME
+	YEM	.	XME
+	ZMB	.	XAF
+	ZWE	.	XAF
+	F228	.	CIS
+	F206	.	XAF
+*	ARB	.	
+*	CSS	.	
+*	CEB	.	
+*	EAR	.	
+*	EAS	.	
+*	EAP	.	
+*	TEA	.	
+*	EMU	.	
+*	ECS	.	
+*	ECA	.	
+*	TEC	.	
+*	EUU	.	
+*	FCS	.	
+*	HPC	.	
+*	HIC	.	
+*	IBD	.	
+*	IBT	.	
+*	IDB	.	
+*	IDX	.	
+*	IDA	.	
+*	LTE	.	
+*	LCN	.	
+*	LAC	.	
+*	TLA	.	
+*	LDC	.	
+*	LMY	.	
+*	LIC	.	
+*	LMC	.	
+*	MEA	.	
+*	MNA	.	
+*	TMN	.	
+*	MIC	.	
+*	NAC	.	
+*	INX	.	
+*	OED	.	
+*	OSS	.	
+*	PSS	.	
+*	PST	.	
+*	PRE	.	
+*	SST	.	
+*	SAS	.	
+*	TSA	.	
+*	SSF	.	
+*	SSA	.	
+*	TSS	.	
+*	UMC	.	
+*	WLD	.	
+
+*AgMIP
+	AFG	.	OAS
+	ALB	.	EUR
+	DZA	.	MEN
+	ASM	.	OAS
+	AND	.	EUR
+	AGO	.	SSA
+	ATG	.	OSA
+	ARG	.	OSA
+	ARM	.	FSU
+	ABW	.	OSA
+	AUS	.	ANZ
+	AUT	.	EUR
+	AZE	.	FSU
+	BHS	.	OSA
+	BHR	.	MEN
+	BGD	.	OAS
+	BRB	.	OSA
+	BLR	.	FSU
+	BEL	.	EUR
+	BLZ	.	OSA
+	BEN	.	SSA
+	BMU	.	OSA
+	BTN	.	OAS
+	BOL	.	OSA
+	BIH	.	EUR
+	BWA	.	SSA
+	VGB	.	OSA
+	BRN	.	OAS
+	BGR	.	EUR
+	BFA	.	SSA
+	BDI	.	SSA
+	CPV	.	SSA
+	KHM	.	SEA
+	CMR	.	SSA
+	CYM	.	OSA
+	CAF	.	SSA
+	TCD	.	SSA
+*	CHI	.	
+	CHL	.	OSA
+	COL	.	OSA
+	COM	.	SSA
+	COD	.	SSA
+	COG	.	SSA
+	CRI	.	OSA
+	CIV	.	SSA
+	HRV	.	EUR
+	CUB	.	OSA
+*	CUW	.	
+	CYP	.	EUR
+	CZE	.	EUR
+	DNK	.	EUR
+	DJI	.	SSA
+	DMA	.	OSA
+	DOM	.	OSA
+	ECU	.	OSA
+	EGY	.	MEN
+	SLV	.	OSA
+	GNQ	.	SSA
+	ERI	.	SSA
+	EST	.	EUR
+	SWZ	.	SSA
+	ETH	.	SSA
+	FRO	.	EUR
+	FJI	.	OAS
+	FIN	.	EUR
+	FRA	.	EUR
+	PYF	.	OAS
+	GAB	.	SSA
+	GMB	.	SSA
+	GEO	.	FSU
+	DEU	.	EUR
+	GHA	.	SSA
+	GIB	.	EUR
+	GRC	.	EUR
+	GRL	.	OSA
+	GRD	.	OSA
+	GUM	.	OAS
+	GTM	.	OSA
+	GIN	.	SSA
+	GNB	.	SSA
+	GUY	.	OSA
+	HTI	.	OSA
+	HND	.	OSA
+	HUN	.	EUR
+	ISL	.	EUR
+	IDN	.	SEA
+	IRN	.	MEN
+	IRQ	.	MEN
+	IRL	.	EUR
+*	IMN	.	
+	ISR	.	MEN
+	ITA	.	EUR
+	JAM	.	OSA
+	JPN	.	SEA
+	JOR	.	MEN
+	KAZ	.	FSU
+	KEN	.	SSA
+	KIR	.	OAS
+	PRK	.	SEA
+	KOR	.	SEA
+*	XKX	.	
+	KWT	.	MEN
+	KGZ	.	FSU
+	LAO	.	SEA
+	LVA	.	EUR
+	LBN	.	MEN
+	LSO	.	SSA
+	LBR	.	SSA
+	LBY	.	MEN
+	LIE	.	EUR
+	LTU	.	EUR
+	LUX	.	EUR
+	MDG	.	SSA
+	MWI	.	SSA
+	MYS	.	SEA
+	MDV	.	OAS
+	MLI	.	SSA
+	MLT	.	EUR
+	MHL	.	OAS
+	MRT	.	SSA
+	MUS	.	SSA
+	MEX	.	OSA
+	FSM	.	OAS
+	MDA	.	FSU
+	MCO	.	EUR
+	MNG	.	SEA
+	MNE	.	EUR
+	MAR	.	MEN
+	MOZ	.	SSA
+	MMR	.	SEA
+	NAM	.	SSA
+	NRU	.	OAS
+	NPL	.	OAS
+	NLD	.	EUR
+	NCL	.	OAS
+	NZL	.	ANZ
+	NIC	.	OSA
+	NER	.	SSA
+	NGA	.	SSA
+	MKD	.	EUR
+	MNP	.	OAS
+	NOR	.	EUR
+	OMN	.	MEN
+	PAK	.	OAS
+	PLW	.	OAS
+	PAN	.	OSA
+	PNG	.	OAS
+	PRY	.	OSA
+	PER	.	OSA
+	PHL	.	SEA
+	POL	.	EUR
+	PRT	.	EUR
+	PRI	.	OSA
+	QAT	.	MEN
+	ROU	.	EUR
+	RUS	.	FSU
+	RWA	.	SSA
+	WSM	.	OAS
+	SMR	.	EUR
+	STP	.	SSA
+	SAU	.	MEN
+	SEN	.	SSA
+	SRB	.	EUR
+	SYC	.	SSA
+	SLE	.	SSA
+	SGP	.	SEA
+*	SXM	.	
+	SVK	.	EUR
+	SVN	.	EUR
+	SLB	.	OAS
+	SOM	.	SSA
+	ZAF	.	SSA
+	SSD	.	SSA
+	ESP	.	EUR
+	LKA	.	OAS
+	KNA	.	OSA
+	LCA	.	OSA
+*	MAF	.	
+	VCT	.	OSA
+	SDN	.	SSA
+	SUR	.	OSA
+	SWE	.	EUR
+	CHE	.	EUR
+	SYR	.	MEN
+	TJK	.	FSU
+	TZA	.	SSA
+	THA	.	SEA
+	TLS	.	SEA
+	TGO	.	SSA
+	TON	.	OAS
+	TTO	.	OSA
+	TUN	.	MEN
+	TUR	.	MEN
+	TKM	.	FSU
+	TCA	.	OSA
+	TUV	.	OAS
+	UGA	.	SSA
+	UKR	.	FSU
+	ARE	.	MEN
+	GBR	.	EUR
+	URY	.	OSA
+	UZB	.	FSU
+	VUT	.	OAS
+	VEN	.	OSA
+	VNM	.	SEA
+	VIR	.	OSA
+	PSE	.	MEN
+	YEM	.	MEN
+	ZMB	.	SSA
+	ZWE	.	SSA
+	F228	.	FSU
+	F206	.	SSA
+*	ARB	.	
+*	CSS	.	
+*	CEB	.	
+*	EAR	.	
+*	EAS	.	
+*	EAP	.	
+*	TEA	.	
+*	EMU	.	
+*	ECS	.	
+*	ECA	.	
+*	TEC	.	
+*	EUU	.	
+*	FCS	.	
+*	HPC	.	
+*	HIC	.	
+*	IBD	.	
+*	IBT	.	
+*	IDB	.	
+*	IDX	.	
+*	IDA	.	
+*	LTE	.	
+*	LCN	.	
+*	LAC	.	
+*	TLA	.	
+*	LDC	.	
+*	LMY	.	
+*	LIC	.	
+*	LMC	.	
+*	MEA	.	
+*	MNA	.	
+*	TMN	.	
+*	MIC	.	
+*	NAC	.	
+*	INX	.	
+*	OED	.	
+*	OSS	.	
+*	PSS	.	
+*	PST	.	
+*	PRE	.	
+*	SST	.	
+*	SAS	.	
+*	TSA	.	
+*	SSF	.	
+*	SSA	.	
+*	TSS	.	
+*	UMC	.	
+*	WLD	.	
+
+	AFG	.	SAS
+	DZA	.	AME
+	ASM	.	SAS
+	AGO	.	AME
+	ATG	.	OAM
+	ARG	.	OAM
+	ABW	.	OAM
+	BHS	.	OAM
+	BHR	.	AME
+	BGD	.	SAS
+	BRB	.	OAM
+	BLZ	.	OAM
+	BEN	.	AME
+	BMU	.	OAM
+	BTN	.	SAS
+	BOL	.	OAM
+	BWA	.	AME
+	BRA	.	OAM
+	VGB	.	OAM
+	BRN	.	SAS
+	BFA	.	AME
+	BDI	.	AME
+	CPV	.	AME
+	CMR	.	AME
+	CAN	.	NAM
+	CYM	.	OAM
+	CAF	.	AME
+	TCD	.	AME
+	CHL	.	OAM
+	COL	.	OAM
+	COM	.	AME
+	COD	.	AME
+	COG	.	AME
+	CRI	.	OAM
+	CIV	.	AME
+	CUB	.	OAM
+	DJI	.	AME
+	DMA	.	OAM
+	DOM	.	OAM
+	ECU	.	OAM
+	EGY	.	AME
+	SLV	.	OAM
+	GNQ	.	AME
+	ERI	.	AME
+	SWZ	.	AME
+	ETH	.	AME
+	FJI	.	SAS
+	PYF	.	SAS
+	GAB	.	AME
+	GMB	.	AME
+	GHA	.	AME
+	GRL	.	OAM
+	GRD	.	OAM
+	GUM	.	SAS
+	GTM	.	OAM
+	GIN	.	AME
+	GNB	.	AME
+	GUY	.	OAM
+	HTI	.	OAM
+	HND	.	OAM
+	IND	.	SAS
+	IRN	.	AME
+	IRQ	.	AME
+	ISR	.	AME
+	JAM	.	OAM
+	JOR	.	AME
+	KEN	.	AME
+	KIR	.	SAS
+	KWT	.	AME
+	LBN	.	AME
+	LSO	.	AME
+	LBR	.	AME
+	LBY	.	AME
+	MDG	.	AME
+	MWI	.	AME
+	MDV	.	SAS
+	MLI	.	AME
+	MHL	.	SAS
+	MRT	.	AME
+	MUS	.	AME
+	MEX	.	OAM
+	FSM	.	SAS
+	MAR	.	AME
+	MOZ	.	AME
+	NAM	.	AME
+	NRU	.	SAS
+	NPL	.	SAS
+	NCL	.	SAS
+	NIC	.	OAM
+	NER	.	AME
+	NGA	.	AME
+	MNP	.	SAS
+	OMN	.	AME
+	PAK	.	SAS
+	PLW	.	SAS
+	PAN	.	OAM
+	PNG	.	SAS
+	PRY	.	OAM
+	PER	.	OAM
+	PRI	.	OAM
+	QAT	.	AME
+	RWA	.	AME
+	WSM	.	SAS
+	STP	.	AME
+	SAU	.	AME
+	SEN	.	AME
+	SYC	.	AME
+	SLE	.	AME
+	SLB	.	SAS
+	SOM	.	AME
+	ZAF	.	AME
+	SSD	.	AME
+	LKA	.	SAS
+	KNA	.	OAM
+	LCA	.	OAM
+	VCT	.	OAM
+	SDN	.	AME
+	SUR	.	OAM
+	SYR	.	AME
+	TZA	.	AME
+	TGO	.	AME
+	TON	.	SAS
+	TTO	.	OAM
+	TUN	.	AME
+	TUR	.	AME
+	TCA	.	OAM
+	TUV	.	SAS
+	UGA	.	AME
+	ARE	.	AME
+	USA	.	NAM
+	URY	.	OAM
+	VUT	.	SAS
+	VEN	.	OAM
+	VIR	.	OAM
+	PSE	.	AME
+	YEM	.	AME
+	ZMB	.	AME
+	ZWE	.	AME
+	KHM	.	SAS
+	CHN	.	SAS
+	HKG	.	SAS
+	IDN	.	SAS
+	JPN	.	SAS
+	PRK	.	SAS
+	KOR	.	SAS
+	LAO	.	SAS
+	MAC	.	SAS
+	MYS	.	SAS
+	MNG	.	SAS
+	MMR	.	SAS
+	PHL	.	SAS
+	SGP	.	SAS
+	THA	.	SAS
+	TLS	.	SAS
+	VNM	.	SAS
+	F206	.	AME
+
+
+*R5
+	AGO	.	R5MAF
+	BDI	.	R5MAF
+	BEN	.	R5MAF
+	BFA	.	R5MAF
+	BWA	.	R5MAF
+	CAF	.	R5MAF
+	CIV	.	R5MAF
+	CMR	.	R5MAF
+	COD	.	R5MAF
+	COG	.	R5MAF
+	COM	.	R5MAF
+	CPV	.	R5MAF
+	DJI	.	R5MAF
+	DZA	.	R5MAF
+	EGY	.	R5MAF
+	ERI	.	R5MAF
+	ESH	.	R5MAF
+	ETH	.	R5MAF
+	GAB	.	R5MAF
+	GHA	.	R5MAF
+	GIN	.	R5MAF
+	GMB	.	R5MAF
+	GNB	.	R5MAF
+	GNQ	.	R5MAF
+	KEN	.	R5MAF
+	LBR	.	R5MAF
+	LBY	.	R5MAF
+	LSO	.	R5MAF
+	MAR	.	R5MAF
+	MDG	.	R5MAF
+	MLI	.	R5MAF
+	MOZ	.	R5MAF
+	MRT	.	R5MAF
+	MUS	.	R5MAF
+	MWI	.	R5MAF
+	MYT	.	R5MAF
+	NAM	.	R5MAF
+	NER	.	R5MAF
+	NGA	.	R5MAF
+	REU	.	R5MAF
+	RWA	.	R5MAF
+	SDN	.	R5MAF
+	F206	.	R5MAF
+	SEN	.	R5MAF
+	SLE	.	R5MAF
+	SOM	.	R5MAF
+	SSD	.	R5MAF
+	STP	.	R5MAF
+	SWZ	.	R5MAF
+	TCD	.	R5MAF
+	TGO	.	R5MAF
+	TUN	.	R5MAF
+	TZA	.	R5MAF
+	UGA	.	R5MAF
+	ZAF	.	R5MAF
+	ZMB	.	R5MAF
+	ZWE	.	R5MAF
+	CHN	.	R5ASIA
+	HKG	.	R5ASIA
+	KHM	.	R5ASIA
+	LAO	.	R5ASIA
+	MAC	.	R5ASIA
+	MMR	.	R5ASIA
+	MNG	.	R5ASIA
+	PRK	.	R5ASIA
+	VNM	.	R5ASIA
+	AUT	.	R5OECD90+EU
+	BEL	.	R5OECD90+EU
+	BGR	.	R5OECD90+EU
+	BIH	.	R5OECD90+EU
+	CHE	.	R5OECD90+EU
+	CYP	.	R5OECD90+EU
+	DEU	.	R5OECD90+EU
+	DNK	.	R5OECD90+EU
+	ESP	.	R5OECD90+EU
+	EST	.	R5OECD90+EU
+	FIN	.	R5OECD90+EU
+	FRA	.	R5OECD90+EU
+	GBR	.	R5OECD90+EU
+	GRC	.	R5OECD90+EU
+	HRV	.	R5OECD90+EU
+	HUN	.	R5OECD90+EU
+	IRL	.	R5OECD90+EU
+	ISL	.	R5OECD90+EU
+	ITA	.	R5OECD90+EU
+	LTU	.	R5OECD90+EU
+	LUX	.	R5OECD90+EU
+	LVA	.	R5OECD90+EU
+	MKD	.	R5OECD90+EU
+	MLT	.	R5OECD90+EU
+	MNE	.	R5OECD90+EU
+	NLD	.	R5OECD90+EU
+	NOR	.	R5OECD90+EU
+	POL	.	R5OECD90+EU
+	PRT	.	R5OECD90+EU
+	ROU	.	R5OECD90+EU
+	SRB	.	R5OECD90+EU
+	SVK	.	R5OECD90+EU
+	SVN	.	R5OECD90+EU
+	SWE	.	R5OECD90+EU
+	TUR	.	R5OECD90+EU
+	AFG	.	R5ASIA
+	BGD	.	R5ASIA
+	BTN	.	R5ASIA
+	IND	.	R5ASIA
+	LKA	.	R5ASIA
+	MDV	.	R5ASIA
+	NPL	.	R5ASIA
+	PAK	.	R5ASIA
+	ARG	.	R5LAM
+	BHS	.	R5LAM
+	BLZ	.	R5LAM
+	BOL	.	R5LAM
+	BRA	.	R5LAM
+	BRB	.	R5LAM
+	CHL	.	R5LAM
+	COL	.	R5LAM
+	CRI	.	R5LAM
+	CUB	.	R5LAM
+	DOM	.	R5LAM
+	ECU	.	R5LAM
+	GLP	.	R5LAM
+	GRD	.	R5LAM
+	GTM	.	R5LAM
+	GUY	.	R5LAM
+	HND	.	R5LAM
+	HTI	.	R5LAM
+	JAM	.	R5LAM
+	MEX	.	R5LAM
+	MTQ	.	R5LAM
+	NIC	.	R5LAM
+	PAN	.	R5LAM
+	PER	.	R5LAM
+	PRI	.	R5OECD90+EU
+	PRY	.	R5LAM
+	SLV	.	R5LAM
+	SUR	.	R5LAM
+	TTO	.	R5LAM
+	URY	.	R5LAM
+	VEN	.	R5LAM
+	ARE	.	R5MAF
+	BHR	.	R5MAF
+	IRN	.	R5MAF
+	IRQ	.	R5MAF
+	ISR	.	R5MAF
+	JOR	.	R5MAF
+	KWT	.	R5MAF
+	LBN	.	R5MAF
+	OMN	.	R5MAF
+	PSE	.	R5MAF
+	QAT	.	R5MAF
+	SAU	.	R5MAF
+	SYR	.	R5MAF
+	YEM	.	R5MAF
+	CAN	.	R5OECD90+EU
+	GUM	.	R5OECD90+EU
+	USA	.	R5OECD90+EU
+	AUS	.	R5OECD90+EU
+	JPN	.	R5OECD90+EU
+	NZL	.	R5OECD90+EU
+	ARM	.	R5REF
+	AZE	.	R5REF
+	BLR	.	R5REF
+	GEO	.	R5REF
+	KAZ	.	R5REF
+	KGZ	.	R5REF
+	MDA	.	R5REF
+	RUS	.	R5REF
+	TJK	.	R5REF
+	TKM	.	R5REF
+	UKR	.	R5REF
+	UZB	.	R5REF
+	F228	.	R5REF
+	BRN	.	R5ASIA
+	FJI	.	R5ASIA
+	FSM	.	R5ASIA
+	IDN	.	R5ASIA
+	KOR	.	R5ASIA
+	MYS	.	R5ASIA
+	NCL	.	R5ASIA
+	PHL	.	R5ASIA
+	PNG	.	R5ASIA
+	PYF	.	R5ASIA
+	SGP	.	R5ASIA
+	SLB	.	R5ASIA
+	THA	.	R5ASIA
+	TLS	.	R5ASIA
+	TWN	.	R5ASIA
+	VUT	.	R5ASIA
+	WSM	.	R5ASIA
+	ABW	.	R5LAM
+	ALB	.	R5OECD90+EU
+	CZE	.	R5OECD90+EU
+	GUF	.	R5LAM
+	VIR	.	R5LAM
+
+*R10
+	AGO	.	R10AFRICA
+	BDI	.	R10AFRICA
+	BEN	.	R10AFRICA
+	BFA	.	R10AFRICA
+	BWA	.	R10AFRICA
+	CAF	.	R10AFRICA
+	CIV	.	R10AFRICA
+	CMR	.	R10AFRICA
+	COD	.	R10AFRICA
+	COG	.	R10AFRICA
+	COM	.	R10AFRICA
+	CPV	.	R10AFRICA
+	DJI	.	R10AFRICA
+	DZA	.	R10AFRICA
+	EGY	.	R10AFRICA
+	ERI	.	R10AFRICA
+	ESH	.	R10AFRICA
+	ETH	.	R10AFRICA
+	GAB	.	R10AFRICA
+	GHA	.	R10AFRICA
+	GIN	.	R10AFRICA
+	GMB	.	R10AFRICA
+	GNB	.	R10AFRICA
+	GNQ	.	R10AFRICA
+	KEN	.	R10AFRICA
+	LBR	.	R10AFRICA
+	LBY	.	R10AFRICA
+	LSO	.	R10AFRICA
+	MAR	.	R10AFRICA
+	MDG	.	R10AFRICA
+	MLI	.	R10AFRICA
+	MOZ	.	R10AFRICA
+	MRT	.	R10AFRICA
+	MUS	.	R10AFRICA
+	MWI	.	R10AFRICA
+	MYT	.	R10AFRICA
+	NAM	.	R10AFRICA
+	NER	.	R10AFRICA
+	NGA	.	R10AFRICA
+	REU	.	R10AFRICA
+	RWA	.	R10AFRICA
+	SDN	.	R10AFRICA
+	F206	.	R10AFRICA
+	SEN	.	R10AFRICA
+	SLE	.	R10AFRICA
+	SOM	.	R10AFRICA
+	SSD	.	R10AFRICA
+	STP	.	R10AFRICA
+	SWZ	.	R10AFRICA
+	TCD	.	R10AFRICA
+	TGO	.	R10AFRICA
+	TUN	.	R10AFRICA
+	TZA	.	R10AFRICA
+	UGA	.	R10AFRICA
+	ZAF	.	R10AFRICA
+	ZMB	.	R10AFRICA
+	ZWE	.	R10AFRICA
+	CHN	.	R10CHINA+
+	HKG	.	R10CHINA+
+	KHM	.	R10CHINA+
+	LAO	.	R10CHINA+
+	MAC	.	R10CHINA+
+	MMR	.	R10CHINA+
+	MNG	.	R10CHINA+
+	PRK	.	R10CHINA+
+	VNM	.	R10CHINA+
+	AUT	.	R10EUROPE
+	BEL	.	R10EUROPE
+	BGR	.	R10EUROPE
+	BIH	.	R10EUROPE
+	CHE	.	R10EUROPE
+	CYP	.	R10EUROPE
+	DEU	.	R10EUROPE
+	DNK	.	R10EUROPE
+	ESP	.	R10EUROPE
+	EST	.	R10EUROPE
+	FIN	.	R10EUROPE
+	FRA	.	R10EUROPE
+	GBR	.	R10EUROPE
+	GRC	.	R10EUROPE
+	HRV	.	R10EUROPE
+	HUN	.	R10EUROPE
+	IRL	.	R10EUROPE
+	ISL	.	R10EUROPE
+	ITA	.	R10EUROPE
+	LTU	.	R10EUROPE
+	LUX	.	R10EUROPE
+	LVA	.	R10EUROPE
+	MKD	.	R10EUROPE
+	MLT	.	R10EUROPE
+	MNE	.	R10EUROPE
+	NLD	.	R10EUROPE
+	NOR	.	R10EUROPE
+	POL	.	R10EUROPE
+	PRT	.	R10EUROPE
+	ROU	.	R10EUROPE
+	SRB	.	R10EUROPE
+	SVK	.	R10EUROPE
+	SVN	.	R10EUROPE
+	SWE	.	R10EUROPE
+	TUR	.	R10EUROPE
+	AFG	.	R10INDIA+
+	BGD	.	R10INDIA+
+	BTN	.	R10INDIA+
+	IND	.	R10INDIA+
+	LKA	.	R10INDIA+
+	MDV	.	R10INDIA+
+	NPL	.	R10INDIA+
+	PAK	.	R10INDIA+
+	ARG	.	R10LATIN_AM
+	BHS	.	R10LATIN_AM
+	BLZ	.	R10LATIN_AM
+	BOL	.	R10LATIN_AM
+	BRA	.	R10LATIN_AM
+	BRB	.	R10LATIN_AM
+	CHL	.	R10LATIN_AM
+	COL	.	R10LATIN_AM
+	CRI	.	R10LATIN_AM
+	CUB	.	R10LATIN_AM
+	DOM	.	R10LATIN_AM
+	ECU	.	R10LATIN_AM
+	GLP	.	R10LATIN_AM
+	GRD	.	R10LATIN_AM
+	GTM	.	R10LATIN_AM
+	GUY	.	R10LATIN_AM
+	HND	.	R10LATIN_AM
+	HTI	.	R10LATIN_AM
+	JAM	.	R10LATIN_AM
+	MEX	.	R10LATIN_AM
+	MTQ	.	R10LATIN_AM
+	NIC	.	R10LATIN_AM
+	PAN	.	R10LATIN_AM
+	PER	.	R10LATIN_AM
+	PRI	.	R10LATIN_AM
+	PRY	.	R10LATIN_AM
+	SLV	.	R10LATIN_AM
+	SUR	.	R10LATIN_AM
+	TTO	.	R10LATIN_AM
+	URY	.	R10LATIN_AM
+	VEN	.	R10LATIN_AM
+	ARE	.	R10MIDDLE_EAST
+	BHR	.	R10MIDDLE_EAST
+	IRN	.	R10MIDDLE_EAST
+	IRQ	.	R10MIDDLE_EAST
+	ISR	.	R10MIDDLE_EAST
+	JOR	.	R10MIDDLE_EAST
+	KWT	.	R10MIDDLE_EAST
+	LBN	.	R10MIDDLE_EAST
+	OMN	.	R10MIDDLE_EAST
+	PSE	.	R10MIDDLE_EAST
+	QAT	.	R10MIDDLE_EAST
+	SAU	.	R10MIDDLE_EAST
+	SYR	.	R10MIDDLE_EAST
+	YEM	.	R10MIDDLE_EAST
+	CAN	.	R10NORTH_AM
+	GUM	.	R10NORTH_AM
+	USA	.	R10NORTH_AM
+	AUS	.	R10PAC_OECD
+	JPN	.	R10PAC_OECD
+	NZL	.	R10PAC_OECD
+	ARM	.	R10REF_ECON
+	AZE	.	R10REF_ECON
+	BLR	.	R10REF_ECON
+	GEO	.	R10REF_ECON
+	KAZ	.	R10REF_ECON
+	KGZ	.	R10REF_ECON
+	MDA	.	R10REF_ECON
+	RUS	.	R10REF_ECON
+	TJK	.	R10REF_ECON
+	TKM	.	R10REF_ECON
+	UKR	.	R10REF_ECON
+	UZB	.	R10REF_ECON
+	F228	.	R10REF_ECON
+	BRN	.	R10REST_ASIA
+	FJI	.	R10REST_ASIA
+	FSM	.	R10REST_ASIA
+	IDN	.	R10REST_ASIA
+	KOR	.	R10REST_ASIA
+	MYS	.	R10REST_ASIA
+	NCL	.	R10REST_ASIA
+	PHL	.	R10REST_ASIA
+	PNG	.	R10REST_ASIA
+	PYF	.	R10REST_ASIA
+	SGP	.	R10REST_ASIA
+	SLB	.	R10REST_ASIA
+	THA	.	R10REST_ASIA
+	TLS	.	R10REST_ASIA
+	TWN	.	R10REST_ASIA
+	VUT	.	R10REST_ASIA
+	WSM	.	R10REST_ASIA
+
+
+*World
+ARM	.	World
+AFG	.	World
+ALB	.	World
+DZA	.	World
+ASM	.	World
+AND	.	World
+AGO	.	World
+ATG	.	World
+ARG	.	World
+AUS	.	World
+AUT	.	World
+BHS	.	World
+BHR	.	World
+BRB	.	World
+F15	.	World
+BGD	.	World
+BMU	.	World
+BTN	.	World
+BOL	.	World
+BWA	.	World
+BRA	.	World
+ABW	.	World
+BLZ	.	World
+IOT	.	World
+SLB	.	World
+BRN	.	World
+BGR	.	World
+MMR	.	World
+BDI	.	World
+ATA	.	World
+BVT	.	World
+CMR	.	World
+CAN	.	World
+CPV	.	World
+CYM	.	World
+CAF	.	World
+LKA	.	World
+TCD	.	World
+CHL	.	World
+CHN	.	World
+CXR	.	World
+CCK	.	World
+COL	.	World
+COM	.	World
+COG	.	World
+COK	.	World
+CRI	.	World
+CUB	.	World
+CYP	.	World
+F51	.	World
+AZE	.	World
+BEN	.	World
+DNK	.	World
+DMA	.	World
+DOM	.	World
+BLR	.	World
+ECU	.	World
+EGY	.	World
+SLV	.	World
+GNQ	.	World
+F62	.	World
+EST	.	World
+FRO	.	World
+FLK	.	World
+FJI	.	World
+FIN	.	World
+FRA	.	World
+GUF	.	World
+PYF	.	World
+ATF	.	World
+DJI	.	World
+GEO	.	World
+GAB	.	World
+GMB	.	World
+76	.	World
+F77	.	World
+F78	.	World
+DEU	.	World
+BIH	.	World
+GHA	.	World
+GIB	.	World
+KIR	.	World
+GRC	.	World
+GRL	.	World
+GRD	.	World
+GLP	.	World
+GUM	.	World
+GTM	.	World
+GIN	.	World
+GUY	.	World
+HMD	.	World
+HTI	.	World
+VAT	.	World
+HND	.	World
+HKG	.	World
+HUN	.	World
+HRV	.	World
+ISL	.	World
+IND	.	World
+IDN	.	World
+IRN	.	World
+IRQ	.	World
+IRL	.	World
+ISR	.	World
+ITA	.	World
+CIV	.	World
+KAZ	.	World
+JAM	.	World
+JPN	.	World
+JTN	.	World
+JOR	.	World
+KGZ	.	World
+KEN	.	World
+KHM	.	World
+PRK	.	World
+KOR	.	World
+KWT	.	World
+LVA	.	World
+LAO	.	World
+LBN	.	World
+LSO	.	World
+LBR	.	World
+LBY	.	World
+LIE	.	World
+LTU	.	World
+MHL	.	World
+MAC	.	World
+MDG	.	World
+MWI	.	World
+MYS	.	World
+MDV	.	World
+MLI	.	World
+MLT	.	World
+MTQ	.	World
+MRT	.	World
+MUS	.	World
+MEX	.	World
+MID	.	World
+MCO	.	World
+MNG	.	World
+MSR	.	World
+MAR	.	World
+MOZ	.	World
+FSM	.	World
+MDA	.	World
+NAM	.	World
+NRU	.	World
+NPL	.	World
+NLD	.	World
+ANT	.	World
+NCL	.	World
+MKD	.	World
+VUT	.	World
+NZL	.	World
+NIC	.	World
+NER	.	World
+NGA	.	World
+NIU	.	World
+NFK	.	World
+NOR	.	World
+MNP	.	World
+F164	.	World
+PAK	.	World
+PAN	.	World
+CZE	.	World
+PNG	.	World
+PRY	.	World
+PER	.	World
+PHL	.	World
+PCN	.	World
+POL	.	World
+PRT	.	World
+GNB	.	World
+TLS	.	World
+PRI	.	World
+ERI	.	World
+QAT	.	World
+PLW	.	World
+ZWE	.	World
+REU	.	World
+ROU	.	World
+RWA	.	World
+RUS	.	World
+SCG	.	World
+SHN	.	World
+KNA	.	World
+LCA	.	World
+SPM	.	World
+VCT	.	World
+SMR	.	World
+STP	.	World
+SAU	.	World
+SEN	.	World
+SYC	.	World
+SLE	.	World
+SVN	.	World
+SVK	.	World
+SGP	.	World
+SOM	.	World
+ZAF	.	World
+ESP	.	World
+ESH	.	World
+F206	.	World
+SUR	.	World
+TJK	.	World
+SWZ	.	World
+SWE	.	World
+CHE	.	World
+SYR	.	World
+TKM	.	World
+TWN	.	World
+TZA	.	World
+THA	.	World
+TGO	.	World
+TKL	.	World
+TON	.	World
+TTO	.	World
+OMN	.	World
+TUN	.	World
+TUR	.	World
+TCA	.	World
+ARE	.	World
+UGA	.	World
+TUV	.	World
+F228	.	World
+GBR	.	World
+UKR	.	World
+USA	.	World
+UMI	.	World
+BFA	.	World
+URY	.	World
+UZB	.	World
+VEN	.	World
+VNM	.	World
+ETH	.	World
+VGB	.	World
+VIR	.	World
+WAK	.	World
+WLF	.	World
+WSM	.	World
+F246	.	World
+F247	.	World
+F248	.	World
+YEM	.	World
+COD	.	World
+ZMB	.	World
+F252	.	World
+F254	.	World
+BEL	.	World
+LUX	.	World
+AIA	.	World
+CHA	.	World
+SJM	.	World
+IMN	.	World
+MYT	.	World
+SGS	.	World
+SRB	.	World
+MNE	.	World
+GGY	.	World
+F275	.	World
+SDN	.	World
+SSD	.	World
+BES	.	World
+CUW	.	World
+SXM	.	World
+MAF	.	World
+BLM	.	World
+JEY	.	World
+ALA	.	World
+F285	.	World
+PSE	.	World
