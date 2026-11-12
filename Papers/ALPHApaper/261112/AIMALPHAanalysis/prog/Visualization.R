@@ -245,7 +245,7 @@ Fig5_pop <- POP_agg %>%
 Fig5_gdp <- GDP_agg %>%
   mutate(yr = as.integer(as.character(yr)),
          sc = factor(sc, levels = names(Scenario_color)),
-         GDP_agg = GDP_agg / 1000) %>%
+         GDP_agg = GDP_agg / 1e6) %>%
   filter(region == "World", yr >= 2015)
 
 pop_decade <- dplyr::filter(Fig5_pop, yr %% 10 == 0)
