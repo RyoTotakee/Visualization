@@ -52,6 +52,7 @@ decadal_years <- seq(2020, 2100, 10)
 analysis_years <- sort(unique(c(2015L, decadal_years)))
 focus_year <- 2100L
 top_n <- 20L
+fig6_top_n <- 15L
 kcal_million_to_pj <- 4.184e-6
 
 # common palettes and plotting helpers ------------------------------------
@@ -1534,24 +1535,15 @@ r5_price_food_summary_2100 <- price_decomp_grouped %>%
   arrange(region5, item)
 
 make_world_final_wedge_total_plot <- function(plot_year) {
-  top_regions <- agmip_ag_reduction_rank %>%
+  selected_regions <- agmip_ag_reduction_rank %>%
     filter(year == plot_year) %>%
     arrange(desc(ag_reduction)) %>%
-    slice_head(n = 10) %>%
+    slice_head(n = fig6_top_n) %>%
     pull(region)
-
-  bottom_regions <- agmip_ag_reduction_rank %>%
-    filter(year == plot_year, !region %in% top_regions) %>%
-    arrange(ag_reduction) %>%
-    slice_head(n = 10) %>%
-    pull(region)
-
-  selected_regions <- c(top_regions, bottom_regions)
 
   country_order <- agmip_ag_reduction_rank %>%
     filter(year == plot_year, region %in% selected_regions) %>%
-    mutate(group_order = if_else(region %in% top_regions, 1L, 2L)) %>%
-    arrange(group_order, desc(ag_reduction)) %>%
+    arrange(desc(ag_reduction)) %>%
     pull(country)
 
   decomp_df <- world_final_wedge_country_co2eq %>%
@@ -1604,24 +1596,15 @@ make_world_final_wedge_r5_total_plot <- function(plot_year) {
 }
 
 make_world_lmdi_country_plot <- function(plot_year) {
-  top_regions <- agmip_ag_reduction_rank %>%
+  selected_regions <- agmip_ag_reduction_rank %>%
     filter(year == plot_year) %>%
     arrange(desc(ag_reduction)) %>%
-    slice_head(n = 10) %>%
+    slice_head(n = fig6_top_n) %>%
     pull(region)
-
-  bottom_regions <- agmip_ag_reduction_rank %>%
-    filter(year == plot_year, !region %in% top_regions) %>%
-    arrange(ag_reduction) %>%
-    slice_head(n = 10) %>%
-    pull(region)
-
-  selected_regions <- c(top_regions, bottom_regions)
 
   country_order <- agmip_ag_reduction_rank %>%
     filter(year == plot_year, region %in% selected_regions) %>%
-    mutate(group_order = if_else(region %in% top_regions, 1L, 2L)) %>%
-    arrange(group_order, desc(ag_reduction)) %>%
+    arrange(desc(ag_reduction)) %>%
     pull(country)
 
   decomp_df <- world_lmdi_country_co2eq %>%
@@ -2191,24 +2174,18 @@ write_csv(
 fig6_top_regions_2100 <- agmip_ag_reduction_rank %>%
   filter(year == focus_year) %>%
   arrange(desc(ag_reduction)) %>%
-  slice_head(n = 10) %>%
-  pull(region)
-
-fig6_bottom_regions_2100 <- agmip_ag_reduction_rank %>%
-  filter(year == focus_year, !region %in% fig6_top_regions_2100) %>%
-  arrange(ag_reduction) %>%
-  slice_head(n = 10) %>%
+  slice_head(n = fig6_top_n) %>%
   pull(region)
 
 write_csv(
   world_final_wedge_country_co2eq %>%
-    filter(year == focus_year, region %in% c(fig6_top_regions_2100, fig6_bottom_regions_2100)) %>%
+    filter(year == focus_year, region %in% fig6_top_regions_2100) %>%
     left_join(
       agmip_ag_reduction_rank %>% filter(year == focus_year) %>% select(region, ag_reduction),
       by = "region"
     ) %>%
     transmute(region, country, year, ag_reduction, demand_mt, technical_mt, structural_mt, total_change_mt),
-  file.path(output_dir, "fig6_top_bottom_country_decomposition_summary_2100.csv")
+  file.path(output_dir, "fig6_top_country_decomposition_summary_2100.csv")
 )
 
 # ---- Fig 6a: Agricultural decomposition in 2100 (Kaya + LMDI)
@@ -2248,7 +2225,7 @@ write_csv(
 
 write_csv(
   world_lmdi_country_co2eq %>%
-    filter(year == focus_year, region %in% c(fig6_top_regions_2100, fig6_bottom_regions_2100)) %>%
+    filter(year == focus_year, region %in% fig6_top_regions_2100) %>%
     left_join(
       agmip_ag_reduction_rank %>% filter(year == focus_year) %>% select(region, ag_reduction),
       by = "region"
@@ -2272,7 +2249,7 @@ write_csv(
       structural_share_pct,
       technical_share_pct
     ),
-  file.path(output_dir, "fig6a_top_bottom_country_decomposition_lmdi_summary_2100.csv")
+  file.path(output_dir, "fig6a_top_country_decomposition_lmdi_summary_2100.csv")
 )
 
 miti_bau_structural_emission_increase_2100 <- world_lmdi_country_co2eq %>%
@@ -2535,6 +2512,244 @@ fig7 <- wrap_plots(
   )
 
 save_plot("fig7_afolu_rate_bubbles_2100.png", fig7, width = 7, height = 16)
+
+# ---- Fig 8: Top countries by AFOLU reduction per capita and per land area
+# Population and land use AGMIP_all_scenario.gdx / AGMIP (POPT, LAND / TOT) in BaU for focus_year.
+# Land area is total land because afforestation and forest measures occur outside agricultural land.
+fig8_top_n <- 15L
+
+fig8_denominators <- RAW_AGMIP %>%
+  filter(year == focus_year, region %in% country_codes, scenario == scenario_baseline) %>%
+  filter(
+    (variable == "POPT" & item == "TOT" & unit == "million") |
+      (variable == "LAND" & item == "TOT" & unit == "1000 ha")
+  ) %>%
+  select(region, variable, value) %>%
+  pivot_wider(names_from = variable, values_from = value) %>%
+  transmute(region, population_million = POPT, land_mha = LAND / 1000)
+
+fig8_country_df <- fig2_actual_country_2100 %>%
+  left_join(fig8_denominators, by = "region") %>%
+  filter(population_million > 0, land_mha > 0) %>%
+  mutate(
+    per_capita = value / population_million,
+    per_ha = value / land_mha
+  )
+
+make_fig8_rank_panel <- function(value_col, x_label) {
+  totals <- fig8_country_df %>%
+    group_by(region, country) %>%
+    summarise(total_value = sum(.data[[value_col]], na.rm = TRUE), .groups = "drop") %>%
+    slice_max(total_value, n = fig8_top_n)
+
+  bar_df <- fig8_country_df %>%
+    filter(region %in% totals$region) %>%
+    mutate(country = factor(country, levels = rev(totals$country)))
+
+  ggplot() +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+    geom_col(data = bar_df, aes(x = .data[[value_col]], y = country, fill = component), width = 0.75) +
+    geom_point(
+      data = totals %>% mutate(country = factor(country, levels = rev(totals$country))),
+      aes(x = total_value, y = country),
+      size = 2.2,
+      color = "black"
+    ) +
+    scale_fill_manual(values = fig2_component_palette, limits = fig2_component_levels, drop = FALSE) +
+    labs(x = x_label, y = NULL) +
+    theme_main
+}
+
+fig8 <- wrap_plots(
+  make_fig8_rank_panel("per_capita", "AFOLU reduction per capita (tCO2eq/cap/yr)"),
+  make_fig8_rank_panel("per_ha", "AFOLU reduction per land area (tCO2eq/ha/yr)"),
+  ncol = 2
+) + plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "a") &
+  theme(legend.position = "bottom") &
+  guides(fill = guide_legend(ncol = 4, byrow = TRUE))
+
+save_plot("fig8_top_countries_per_capita_and_area_2100.png", fig8, width = 11, height = 6.5)
+
+write_csv(
+  fig8_country_df %>%
+    group_by(region, country, population_million, land_mha) %>%
+    summarise(afolu_reduction = sum(value, na.rm = TRUE), .groups = "drop") %>%
+    mutate(
+      per_capita = afolu_reduction / population_million,
+      per_ha = afolu_reduction / land_mha,
+      rank_per_capita = min_rank(desc(per_capita)),
+      rank_per_ha = min_rank(desc(per_ha))
+    ) %>%
+    filter(rank_per_capita <= fig8_top_n | rank_per_ha <= fig8_top_n) %>%
+    arrange(rank_per_capita),
+  file.path(output_dir, "fig8_top_countries_per_capita_and_area_2100.csv")
+)
+
+# ---- Fig 9: Reduction indicators and land-use change indicators by country
+# Land use uses AGMIP_all_scenario.gdx / AGMIP / LAND (TOT, CRP, ECP, GRS, ONV, NLD, FOR) in focus_year.
+# Land-use change share is half the sum of absolute MITI - BaU differences across land categories, divided by BaU total land.
+# LULUCF reduction is the sum of Fig 2 land components; BaU LULUCF emissions are the Fig 1 land components.
+# The LULUCF reduction rate axis uses a pseudo-log scale because rates span several orders of magnitude and include negative values.
+# Rates are undefined where the BaU denominator is at numerical-noise level (1e-6 MtCO2eq/yr or less).
+fig9_land_items <- c("CRP", "ECP", "GRS", "ONV", "NLD", "FOR")
+fig9_ag_components <- c("Enteric fermentation", "Manure management", "Rice cultivation", "Managed soils")
+
+fig9_land <- RAW_AGMIP %>%
+  filter(
+    year == focus_year,
+    region %in% country_codes,
+    scenario %in% c(scenario_baseline, scenario_landint),
+    variable == "LAND",
+    item %in% c("TOT", fig9_land_items),
+    unit == "1000 ha"
+  ) %>%
+  select(region, item, scenario, value) %>%
+  pivot_wider(names_from = scenario, values_from = value, values_fill = 0) %>%
+  mutate(change = .data[[scenario_landint]] - .data[[scenario_baseline]]) %>%
+  group_by(region) %>%
+  summarise(
+    land_bau = sum(.data[[scenario_baseline]][item == "TOT"], na.rm = TRUE),
+    luc = 0.5 * sum(abs(change[item != "TOT"]), na.rm = TRUE),
+    forest_change = sum(change[item == "FOR"], na.rm = TRUE),
+    agland_change = sum(change[item %in% c("CRP", "GRS")], na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    luc_share_pct = if_else(land_bau > 0, 100 * luc / land_bau, NA_real_),
+    forest_change_pct = if_else(land_bau > 0, 100 * forest_change / land_bau, NA_real_),
+    agland_change_pct = if_else(land_bau > 0, 100 * agland_change / land_bau, NA_real_)
+  )
+
+fig9_reduction <- fig2_actual_country_2100 %>%
+  group_by(region) %>%
+  summarise(
+    ag_reduction = sum(value[component %in% fig9_ag_components], na.rm = TRUE),
+    lulucf_reduction = sum(value[!component %in% fig9_ag_components], na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    fig1_baseline_country_2100 %>%
+      group_by(region) %>%
+      summarise(
+        ag_baseline = sum(value[component %in% fig9_ag_components], na.rm = TRUE),
+        lulucf_baseline = sum(value[!component %in% fig9_ag_components], na.rm = TRUE),
+        .groups = "drop"
+      ),
+    by = "region"
+  )
+
+fig9_df <- afolu_rate_country_fig6 %>%
+  left_join(fig9_reduction, by = "region") %>%
+  left_join(fig9_land, by = "region") %>%
+  left_join(region_map %>% select(region, region5), by = "region") %>%
+  mutate(
+    region5 = factor(region5, levels = names(region_palette)),
+    ag_reduction_rate = if_else(ag_baseline > 1e-6, 100 * ag_reduction / ag_baseline, NA_real_),
+    lulucf_reduction_rate = if_else(lulucf_baseline > 1e-6, 100 * lulucf_reduction / lulucf_baseline, NA_real_),
+    lulucf_reduction_per_ha = if_else(land_bau > 0, lulucf_reduction / (land_bau / 1000), NA_real_)
+  ) %>%
+  fixed_afolu_bubble_size()
+
+fig9_x_vars <- c(
+  luc_share_pct = "Land-use change (% of total land)",
+  forest_change_pct = "Forest area change (% of total land)",
+  agland_change_pct = "Cropland + grassland change (% of total land)"
+)
+fig9_y_vars <- c(
+  lulucf_reduction_per_ha = "LULUCF reduction per land area\n(tCO2eq/ha/yr)",
+  lulucf_reduction_rate = "LULUCF reduction rate\n(% of BaU LULUCF emissions, pseudo-log)",
+  reduction_rate = "AFOLU reduction rate\n(% of BaU AFOLU emissions)",
+  ag_reduction_rate = "Agricultural reduction rate\n(% of BaU agricultural emissions)"
+)
+
+make_fig9_bubble <- function(x_col, y_col) {
+  plot_df <- fig9_df %>% filter(is.finite(.data[[x_col]]), is.finite(.data[[y_col]]), !is.na(region5))
+  rho <- cor(plot_df[[x_col]], plot_df[[y_col]], method = "spearman")
+  label_df <- plot_df %>% filter(size_bin %in% tail(levels(plot_df$size_bin), 1))
+
+  p <- ggplot(plot_df, aes(x = .data[[x_col]], y = .data[[y_col]])) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey45", linewidth = 0.35) +
+    geom_point(aes(size = size_bin, fill = region5, color = region5, alpha = size_bin), shape = 21, stroke = 0.35) +
+    ggrepel::geom_text_repel(
+      data = label_df,
+      aes(label = country, color = region5),
+      size = 2.6,
+      fontface = "bold",
+      min.segment.length = 0.2,
+      seed = 1,
+      show.legend = FALSE
+    ) +
+    scale_fill_manual(values = region_palette, drop = FALSE) +
+    scale_color_manual(values = region_border_palette, drop = FALSE) +
+    scale_size_manual(values = c(1.6, 2.8, 4, 5.2), drop = FALSE) +
+    scale_alpha_manual(values = c(0.55, 0.65, 0.75, 0.85), guide = "none", drop = FALSE) +
+    labs(
+      x = fig9_x_vars[[x_col]],
+      y = fig9_y_vars[[y_col]],
+      subtitle = sprintf("Spearman rho = %.2f (n = %d)", rho, nrow(plot_df))
+    ) +
+    guides(
+      fill = guide_legend(order = 1, nrow = 1, override.aes = list(size = 4, alpha = 1)),
+      color = "none",
+      size = guide_legend(order = 2, nrow = 1)
+    ) +
+    theme_main +
+    theme(
+      plot.subtitle = element_text(size = 8.5, color = "grey30"),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(size = 8)
+    )
+
+  if (y_col == "lulucf_reduction_rate") {
+    p <- p + scale_y_continuous(
+      trans = scales::pseudo_log_trans(sigma = 10, base = 10),
+      breaks = c(-1000, -100, 0, 100, 1000, 10000)
+    )
+  }
+  p
+}
+
+fig9 <- wrap_plots(
+  unlist(
+    lapply(names(fig9_y_vars), function(y_col) lapply(names(fig9_x_vars), function(x_col) make_fig9_bubble(x_col, y_col))),
+    recursive = FALSE
+  ),
+  ncol = length(fig9_x_vars)
+) + plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "a") &
+  theme(legend.position = "bottom", legend.box = "vertical")
+
+save_plot("fig9_reduction_vs_land_use_change_indicators_2100.png", fig9, width = 14, height = 17)
+
+write_csv(
+  fig9_df %>%
+    transmute(
+      region,
+      country,
+      region5,
+      afolu_reduction,
+      baseline_emissions,
+      reduction_rate,
+      ag_reduction,
+      ag_baseline,
+      ag_reduction_rate,
+      lulucf_reduction,
+      lulucf_baseline,
+      lulucf_reduction_rate,
+      lulucf_reduction_per_ha,
+      land_bau_kha = land_bau,
+      luc_kha = luc,
+      luc_share_pct,
+      forest_change_kha = forest_change,
+      forest_change_pct,
+      agland_change_kha = agland_change,
+      agland_change_pct
+    ) %>%
+    arrange(desc(afolu_reduction)),
+  file.path(output_dir, "fig9_reduction_vs_land_use_change_indicators_2100.csv")
+)
 
 # ---- Exploratory regression: demand-side contribution and price impacts
 demand_price_exploratory_2100 <- world_lmdi_country_co2eq %>%
